@@ -12,6 +12,14 @@ function renderFooter() {
 }
 
 describe('Footer', () => {
+  it('renders the SNBudget logo home link', () => {
+    renderFooter()
+    expect(screen.getByRole('link', { name: /snbudget home/i })).toHaveAttribute(
+      'href',
+      '/',
+    )
+  })
+
   it('renders a copyright with the current year', () => {
     renderFooter()
     const year = new Date().getFullYear()
@@ -37,5 +45,3 @@ describe('Footer', () => {
     )
   })
 })
-
-

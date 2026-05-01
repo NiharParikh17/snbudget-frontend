@@ -1,7 +1,18 @@
 @import "tailwindcss";
+
+/*
+ * Class-based dark mode — ThemeContext adds/removes `.dark` on <html>.
+ * Tailwind's `dark:` utilities apply inside any `.dark` ancestor.
+ */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  color-scheme: light dark;
+  /* Brand colour tokens — violet primary + cyan accent */
+  --color-brand: #7c3aed;       /* violet-600 */
+  --color-brand-light: #a78bfa; /* violet-400 */
+  --color-accent: #06b6d4;      /* cyan-500   */
 }
+
 html,
 body,
 #root {

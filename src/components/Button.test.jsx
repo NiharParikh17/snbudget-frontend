@@ -34,5 +34,12 @@ describe('Button', () => {
       /hover:bg-slate-100/,
     )
   })
+
+  it('includes cursor-pointer in the base classes', () => {
+    render(<Button>Base</Button>)
+    expect(screen.getByRole('button', { name: /base/i }).className).toMatch(
+      /cursor-pointer/,
+    )
+  })
 })
 

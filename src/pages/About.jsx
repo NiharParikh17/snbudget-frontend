@@ -50,7 +50,7 @@ function About() {
     <div className="px-4 sm:px-6 py-12 sm:py-16">
       <article className="max-w-3xl mx-auto">
         <header className="text-center">
-          <p className="text-sm font-medium uppercase tracking-wider text-indigo-600 dark:text-indigo-300">
+          <p className="text-sm font-medium uppercase tracking-wider text-violet-600 dark:text-violet-400">
             About SNBudget
           </p>
           <h1 className="mt-2 text-4xl sm:text-5xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -85,7 +85,7 @@ function About() {
             {featurePillars.map((pillar) => (
               <li
                 key={pillar.title}
-                className="rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4"
+                className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5 shadow-sm"
               >
                 <h3 className="font-semibold text-slate-900 dark:text-white">
                   {pillar.title}
@@ -130,7 +130,7 @@ function About() {
             the budgeting + splitting features are next; see the{' '}
             <Link
               to="/"
-              className="text-indigo-600 dark:text-indigo-300 underline"
+              className="text-violet-600 dark:text-violet-400 underline"
             >
               roadmap on the project site
             </Link>{' '}
@@ -159,14 +159,14 @@ function About() {
             export-anytime stance are baseline goals. See the{' '}
             <Link
               to="/privacy"
-              className="text-indigo-600 dark:text-indigo-300 underline"
+              className="text-violet-600 dark:text-violet-400 underline"
             >
               Privacy page
             </Link>{' '}
             for the current statement of intent, and the{' '}
             <Link
               to="/terms"
-              className="text-indigo-600 dark:text-indigo-300 underline"
+              className="text-violet-600 dark:text-violet-400 underline"
             >
               Terms
             </Link>{' '}
