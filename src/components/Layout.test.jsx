@@ -1,16 +1,14 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { screen } from '@testing-library/react'
 import Layout from './Layout.jsx'
+import { renderWithProviders } from '../test/renderWithProviders.jsx'
 
 describe('Layout', () => {
   it('renders header, footer, and the page children', () => {
-    render(
-      <MemoryRouter>
-        <Layout>
-          <p>page content</p>
-        </Layout>
-      </MemoryRouter>,
+    renderWithProviders(
+      <Layout>
+        <p>page content</p>
+      </Layout>,
     )
 
     expect(screen.getByRole('banner')).toBeInTheDocument() // <header>
@@ -18,5 +16,3 @@ describe('Layout', () => {
     expect(screen.getByText(/page content/i)).toBeInTheDocument()
   })
 })
-
-

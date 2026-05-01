@@ -1,19 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { screen, within } from '@testing-library/react'
 import Header from './Header.jsx'
-
-function renderHeader() {
-  return render(
-    <MemoryRouter>
-      <Header />
-    </MemoryRouter>,
-  )
-}
+import { renderWithProviders } from '../test/renderWithProviders.jsx'
 
 describe('Header', () => {
   it('shows the SNBudget brand logo link', () => {
-    renderHeader()
+    renderWithProviders(<Header />)
     expect(screen.getByRole('link', { name: /snbudget home/i })).toHaveAttribute(
       'href',
       '/',
@@ -21,15 +13,15 @@ describe('Header', () => {
   })
 
   it('renders the SNBudget wordmark inside the brand link', () => {
-    renderHeader()
+    renderWithProviders(<Header />)
     const brandLink = screen.getByRole('link', { name: /snbudget home/i })
     expect(within(brandLink).getByText('SNBudget')).toBeInTheDocument()
   })
 
-  it('exposes Sign in and Sign up actions in the account nav', () => {
-    renderHeader()
+  it('exposes Sign in and Sign up actions when anonymous', async () => {
+    renderWithProviders(<Header />)
     const nav = screen.getByRole('navigation', { name: /account/i })
-    expect(within(nav).getByRole('link', { name: /sign in/i })).toHaveAttribute(
+    expect(await within(nav).findByRole('link', { name: /sign in/i })).toHaveAttribute(
       'href',
       '/signin',
     )

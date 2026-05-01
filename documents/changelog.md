@@ -6,6 +6,80 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Authentication UI** — `/signup` and `/signin` pages backed by the
+  SNBudget Identity API (`POST /api/users`, `POST /api/auth/login`,
+  `POST /api/auth/refresh`, `POST /api/auth/logout`). Registration sends
+  the user to `/signin?registered=1` with a "check your email" banner
+  (verification is enforced by the backend; the UI surfaces whatever
+  message the API returns). After login the user lands on a temporary
+  `/welcome` placeholder page (`src/pages/Welcome.jsx`) that confirms
+  sign-in and offers a Sign out button — the real dashboard will replace
+  this later.
+- **AuthContext** (`src/context/AuthContext.jsx`) — `AuthProvider` +
+  `useAuth` hook. Owns the in-memory auth session
+  `{ status, accessToken, userId, expiresAt }`. **Access token lives only
+  in React state** (never `localStorage`/`sessionStorage`); the
+  long-lived refresh token is the backend's HttpOnly cookie. On mount,
+  `AuthProvider` performs a silent refresh and then schedules another one
+  ~60 s before expiry so the session stays alive without user action.
+  Mounted in `src/main.jsx` inside `BrowserRouter`.
+- **API client** (`src/lib/apiClient.js`) — typed `request(method, path,
+  { body, accessToken })` wrapper around `fetch` that always sends
+  `credentials: 'include'`, throws a typed `ApiError` (`status`,
+  `message`, `fieldErrors`), and never logs request bodies. Endpoint
+  wrappers in `src/api/auth.js` and `src/api/users.js`.
+- **Auth UI primitives** — `src/components/AuthFormShell.jsx` (centered
+  card with brand mark + heading/subtitle/footer slots) and
+  `src/components/FormField.jsx` (labelled input with `aria-invalid` and
+  inline error wiring) so the auth pages stay DRY. `RequireAuth`
+  (`src/components/RequireAuth.jsx`) guards authenticated-only routes
+  (currently just `/welcome`) and bounces anonymous users to `/signin`
+  while preserving the requested location in `state.from`.
+- **Header user menu** — `Header` now branches on `useAuth().status`,
+  showing **My account** + **Sign out** when authenticated and the
+  existing Sign in / Sign up actions otherwise.
+- **`VITE_API_BASE_URL`** env var (defaults to `http://localhost:8081`)
+  documented in `.env.example`.
+- **Test helpers** — `src/test/renderWithProviders.jsx` wraps RTL `render`
+  in `MemoryRouter` + `AuthProvider`. Global `fetch` is now stubbed in
+  `src/test/setup.js` to a rejecting mock so tests cannot accidentally
+  hit `localhost:8081`. New tests for `apiClient`, `AuthContext`,
+  `SignIn`, `SignUp`, `Welcome`, `AuthFormShell`, `FormField`, and
+  `RequireAuth`; existing `Header`, `Layout`, and `App` tests updated
+  for the new provider stack and route table. Total: **78 tests** (was
+  47).
+
+### Changed
+- `src/main.jsx` — `AuthProvider` is now mounted inside `BrowserRouter`
+  so its async helpers can use `useNavigate` indirectly via consumers.
+- `src/App.jsx` — added `/signin`, `/signup`, and a `RequireAuth`-guarded
+  `/welcome` route.
+
+### Security
+- New code uses **only native `fetch`** — no new runtime dependencies
+  added, so `npm audit` remains at **0 vulnerabilities**. The Identity
+  API endpoints were CVE-validated as part of this change (no new
+  packages to scan).
+- Access tokens are held in memory only; refresh tokens stay in the
+  backend-set HttpOnly cookie. Browser console / extensions and any
+  XSS payload cannot read either credential from web storage.
+- The dev backend at `localhost:8081` MUST send
+  `Access-Control-Allow-Credentials: true` with an explicit origin
+  (not `*`) for `credentials: 'include'` to work cross-origin.
+  Documented in `architecture.md`.
+
+### TODO (under [Unreleased])
+- **Password strength rules + meter** — current client-side rule is
+  only `minLength: 8` (matching the backend). Add a strength meter and
+  stricter requirements (variety, breach check, etc.) once basic auth
+  is in real use.
+- **Resend verification email** — no backend endpoint yet. Add a
+  "Resend verification email" link on `/signin` once the API exposes
+  it.
+- **Real dashboard** — replace the `/welcome` placeholder with the
+  authenticated home / dashboard once budgeting features land.
+
+### Added
 - **ThemeContext** (`src/context/ThemeContext.jsx`) — app-wide theme management
   with `ThemeProvider` + `useTheme` hook. Supports `'system'` (OS default,
   used pre-auth everywhere), `'light'`, and `'dark'` modes. Chosen mode is

@@ -154,9 +154,12 @@ src/
   to avoid floating-point bugs. A `lib/money.js` helper will be introduced
   before transaction features land.
 
-## Backend integration (planned)
+## Backend integration
 
-- A separate API repository will expose REST or GraphQL endpoints. Until it
-  exists, features may be developed against in-memory mocks behind an `api/`
-  module so swapping in real endpoints is mechanical.
+- The SNBudget Identity API (`http://localhost:8081` by default) is the
+  first backend the frontend talks to. Authentication is implemented end
+  to end (signup, signin, silent refresh, logout); see "Auth & API
+  integration" above. Other product APIs (categories, budgets,
+  transactions, splits) will land in `src/api/` alongside `auth.js` /
+  `users.js` and use the same `lib/apiClient.js` wrapper.
 

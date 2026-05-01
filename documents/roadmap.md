@@ -36,7 +36,11 @@
 ## Phase 3 — Backend integration
 
 - [ ] API client module
-- [ ] Auth (login / signup)
+- [~] Auth (login / signup) — frontend pages, AuthContext (in-memory
+      access token + HttpOnly refresh cookie), and silent refresh
+      shipped against the SNBudget Identity API. Email verification is
+      enforced by the backend; "Resend verification email" pending a
+      backend endpoint.
 - [ ] Replace local persistence with API
 - [ ] Real multi-user splits
 

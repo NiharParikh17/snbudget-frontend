@@ -84,10 +84,21 @@ function Privacy() {
             What we collect today
           </h2>
           <p className="mt-3 text-slate-600 dark:text-slate-300">
-            SNBudget is currently a frontend-only preview. There is no
-            backend, no account system, and no analytics. The site does not
-            set tracking cookies. Nothing you do on this page leaves your
-            browser.
+            The SNBudget account system is now live in early access. When
+            you create an account we collect your name, email, username,
+            password (stored only as a securely hashed value), and any
+            optional details you add (phone number, profile picture URL).
+            We send you a verification email so we can confirm the
+            address really belongs to you. We do not run analytics
+            trackers or set advertising cookies on this site.
+          </p>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
+            Your authenticated session is implemented with a short-lived
+            access token held only in memory by your browser and a
+            long-lived refresh token in an HttpOnly cookie set by our
+            backend. Neither is readable by JavaScript on the page, which
+            limits what an attacker could steal in the event of an XSS
+            bug.
           </p>
         </section>
 

@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { afterEach, beforeAll } from 'vitest'
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest'
 import { cleanup } from '@testing-library/react'
 
 // jsdom does not implement window.matchMedia — provide a minimal stub
@@ -20,7 +20,14 @@ beforeAll(() => {
   }
 })
 
-afterEach(() => {
-  cleanup()
+// Default `fetch` to a rejecting stub so AuthProvider's silent refresh
+// (and any other accidental network call) cannot reach the real backend
+// during tests. Individual tests can override via `vi.spyOn(global, 'fetch')`.
+beforeEach(() => {
+  globalThis.fetch = vi.fn(() => Promise.reject(new Error('network disabled in tests')))
 })
 
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})

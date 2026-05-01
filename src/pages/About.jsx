@@ -124,10 +124,12 @@ function About() {
           </h2>
           <p className="mt-3 text-slate-600 dark:text-slate-300">
             SNBudget is in early development. The web frontend currently
-            ships an unauthenticated landing experience — the Home page,
-            this About page, and the global app shell (header with
-            sign-in / sign-up actions, static footer). Authentication and
-            the budgeting + splitting features are next; see the{' '}
+            ships the public landing pages (Home, About, Privacy, Terms)
+            plus the first authenticated flows: <strong>Sign up</strong>
+            and <strong>Sign in</strong>, backed by the SNBudget Identity
+            API. New accounts must verify their email address (via a link
+            we email you) before they can sign in. The budgeting and
+            splitting features are next; see the{' '}
             <Link
               to="/"
               className="text-violet-600 dark:text-violet-400 underline"

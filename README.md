@@ -85,9 +85,10 @@ See [`documents/README.md`](./documents/README.md) for the doc index.
 
 ## Status
 
-🚧 Early scaffolding. The app currently ships unauthenticated public pages —
-**Home** (`/`), **About** (`/about`), **Privacy** (`/privacy`), and
-**Terms** (`/terms`) — inside the global `Layout` (Header with Sign in /
-Sign up, static Footer). Routing is wired up with `react-router-dom`. Auth
-flows and product features are next — see
+🚧 Early scaffolding. The app currently ships the public pages — **Home**
+(`/`), **About** (`/about`), **Privacy** (`/privacy`), **Terms**
+(`/terms`) — plus the first authenticated flows: **Sign up** (`/signup`)
+and **Sign in** (`/signin`) backed by the SNBudget Identity API, with a
+placeholder **Welcome** (`/welcome`) page after login. The real dashboard
+and budgeting features are next — see
 [`documents/roadmap.md`](./documents/roadmap.md).

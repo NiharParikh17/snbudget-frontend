@@ -2,11 +2,14 @@ import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import App from './App.jsx'
+import { AuthProvider } from './context/AuthContext.jsx'
 
 function renderAt(path) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <App />
+      <AuthProvider>
+        <App />
+      </AuthProvider>
     </MemoryRouter>,
   )
 }
@@ -49,6 +52,27 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('renders the Sign in page at "/signin"', () => {
+    renderAt('/signin')
+    expect(
+      screen.getByRole('heading', { level: 1, name: /^sign in$/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('renders the Sign up page at "/signup"', () => {
+    renderAt('/signup')
+    expect(
+      screen.getByRole('heading', { level: 1, name: /create your account/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('redirects /welcome to /signin when anonymous', async () => {
+    renderAt('/welcome')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^sign in$/i }),
+    ).toBeInTheDocument()
+  })
+
   it('redirects unknown routes to Home', () => {
     renderAt('/does-not-exist')
     expect(
@@ -56,4 +80,3 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 })
-

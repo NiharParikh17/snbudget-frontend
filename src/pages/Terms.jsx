@@ -55,16 +55,24 @@ function Terms() {
           </h2>
           <ul className="mt-3 space-y-2 list-disc list-inside text-slate-600 dark:text-slate-300">
             <li>
-              You must be old enough to form a binding contract in your
-              jurisdiction (generally 18+).
+              You must be at least <strong>16 years old</strong> to create
+              an SNBudget account. Where local law sets a higher age for
+              forming a binding online contract or for processing
+              children's data, you must also meet that age.
             </li>
             <li>
-              When account sign-up exists, you agree to provide accurate
-              information and to keep your credentials secure.
+              You agree to provide accurate information when you sign up
+              and to keep your password confidential. You must verify the
+              email address you register with before you can sign in.
             </li>
             <li>
               You are responsible for activity that happens under your
-              account.
+              account. Tell us promptly if you believe your account has
+              been compromised.
+            </li>
+            <li>
+              You can stop using SNBudget at any time and request deletion
+              of your account and your data.
             </li>
           </ul>
         </section>
