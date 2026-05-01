@@ -57,7 +57,6 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - `index.html` — title changed to "SNBudget — Budget smarter. Split easier.",
   `meta description` added, Google Fonts `<link>` added.
 
-
 - **About page** at `src/pages/About.jsx` (route `/about`) describing what
   SNBudget is, who it's for, what you can do, how it works, current status,
   non-goals, and privacy stance. Linked from the global Footer.

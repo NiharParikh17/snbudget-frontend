@@ -107,4 +107,3 @@ describe('ThemeContext', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(true)
   })
 })
-
