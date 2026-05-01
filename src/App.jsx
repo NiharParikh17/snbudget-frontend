@@ -8,6 +8,7 @@ import Terms from './pages/Terms.jsx'
 import SignIn from './pages/SignIn.jsx'
 import SignUp from './pages/SignUp.jsx'
 import Welcome from './pages/Welcome.jsx'
+import EmailVerified from './pages/EmailVerified.jsx'
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
         <Route path="/terms" element={<Terms />} />
         <Route path="/signin" element={<SignIn />} />
         <Route path="/signup" element={<SignUp />} />
+        <Route path="/email-verified" element={<EmailVerified />} />
         <Route
           path="/welcome"
           element={

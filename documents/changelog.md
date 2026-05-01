@@ -6,6 +6,32 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Email verification result page** (`src/pages/EmailVerified.jsx`, route
+  `/email-verified`) — public landing page the `identity-management`
+  backend redirects to after a user clicks the verification link in their
+  welcome email. Reads `?status` from the URL only (no API call — the
+  backend has already verified the token). Renders one of two states:
+  - **Success** (`?status=success`): "Email verified!" heading, confirmation
+    copy, a live 10-second countdown ("Redirecting you to sign in in N
+    seconds…") and an auto-redirect to `/signin` (with a CTA fallback
+    "Go to sign in now").
+  - **Invalid** (anything else, including missing/unknown `status`): "Link
+    is no longer valid" heading + red `role="alert"` banner and a single
+    "Go to sign in" CTA. Defensive default — backend failure detail is
+    never exposed in the URL or to the user.
+  Reuses `AuthFormShell` + `Button` for visual consistency with `/signin`
+  and `/signup`. New tests in `src/pages/EmailVerified.test.jsx` (9 tests:
+  copy, CTA href, countdown ticks with singular/plural handling, auto-nav
+  at 10 s, no nav from invalid state, missing/unknown/raw-status
+  defensiveness, and interval cleanup on unmount). Total: **87 tests**
+  (was 78). Route table in `documents/architecture.md` updated.
+
+### Changed
+- **Dependency bumps (patch/minor)** — `eslint` 10.2.1 → 10.3.0 and
+  `globals` 17.5.0 → 17.6.0. CVE-validated (no known CVEs); `npm audit`
+  remains at 0 vulnerabilities; lint + tests pass.
+
+### Added
 - **Brand tokens** (`documents/brand-tokens.json` + `documents/brand-tokens.md`) —
   language-neutral, versioned source of truth for SNBudget's visual identity:
   product info, logo (inline SVG + absolute PNG URLs for emails), full

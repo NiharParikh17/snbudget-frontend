@@ -98,6 +98,17 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
 - Current routes:
   - `/` → `pages/Home.jsx`
   - `/about` → `pages/About.jsx`
+  - `/privacy` → `pages/Privacy.jsx`
+  - `/terms` → `pages/Terms.jsx`
+  - `/signin` → `pages/SignIn.jsx`
+  - `/signup` → `pages/SignUp.jsx`
+  - `/email-verified` → `pages/EmailVerified.jsx` (public landing the
+    `identity-management` backend redirects to after a verification-link
+    click; reads `?status=success|invalid` only — no API call. Anything
+    other than `success` is treated as invalid (defensive default). The
+    success state auto-redirects to `/signin` after 10 s with a CTA
+    fallback.)
+  - `/welcome` → `pages/Welcome.jsx` (guarded by `RequireAuth`)
   - `*` → redirect to `/` (until a dedicated 404 page exists)
 - Use `<Link>` / `<NavLink>` for in-app navigation; never bare `<a href>` for
   internal routes.
