@@ -1,0 +1,153 @@
+{
+  "$schema": "./brand-tokens.schema.md",
+  "version": "1.0.0",
+  "updatedAt": "2026-05-01",
+  "product": {
+    "name": "SNBudget",
+    "tagline": "Budget smarter. Split easier.",
+    "description": "Personal budgeting with built-in expense splitting between users.",
+    "url": "https://snbudget.app",
+    "supportEmail": "support@snbudget.app",
+    "noReplyEmail": "no-reply@snbudget.app"
+  },
+  "logo": {
+    "wordmark": "SNBudget",
+    "favicon": "/favicon.svg",
+    "iconSvg": "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 46' width='28' height='28' fill='none' aria-hidden='true'><path d='M25.946 44.938c-.664.845-2.021.375-2.021-.698V33.937a2.26 2.26 0 0 0-2.262-2.262H10.287c-.92 0-1.456-1.04-.92-1.788l7.48-10.471c1.07-1.497 0-3.578-1.842-3.578H1.237c-.92 0-1.456-1.04-.92-1.788L10.013.474c.214-.297.556-.474.92-.474h28.894c.92 0 1.456 1.04.92 1.788l-7.48 10.471c-1.07 1.498 0 3.579 1.842 3.579h11.377c.943 0 1.473 1.088.89 1.83L25.947 44.94z' fill='url(#logo-grad)'/><defs><linearGradient id='logo-grad' x1='0' y1='0' x2='48' y2='46' gradientUnits='userSpaceOnUse'><stop stop-color='#a78bfa'/><stop offset='1' stop-color='#7c3aed'/></linearGradient></defs></svg>",
+    "iconPngUrl": "https://snbudget.app/brand/logo-bolt-256.png",
+    "wordmarkPngUrl": "https://snbudget.app/brand/logo-wordmark-512.png",
+    "gradient": {
+      "from": "#a78bfa",
+      "to": "#7c3aed",
+      "angleDeg": 135
+    }
+  },
+  "colors": {
+    "light": {
+      "brand": "#7c3aed",
+      "brandHover": "#6d28d9",
+      "brandActive": "#5b21b6",
+      "brandSoft": "#ede9fe",
+      "brandOnPrimary": "#ffffff",
+      "accent": "#06b6d4",
+      "background": "#ffffff",
+      "surface": "#f8fafc",
+      "surfaceMuted": "#f1f5f9",
+      "border": "#e2e8f0",
+      "text": "#0f172a",
+      "textMuted": "#475569",
+      "textSubtle": "#64748b",
+      "link": "#7c3aed",
+      "success": "#16a34a",
+      "warning": "#d97706",
+      "danger": "#dc2626"
+    },
+    "dark": {
+      "brand": "#a78bfa",
+      "brandHover": "#c4b5fd",
+      "brandActive": "#8b5cf6",
+      "brandSoft": "#2e1065",
+      "brandOnPrimary": "#0f172a",
+      "accent": "#22d3ee",
+      "background": "#020617",
+      "surface": "#0f172a",
+      "surfaceMuted": "#1e293b",
+      "border": "#334155",
+      "text": "#f8fafc",
+      "textMuted": "#cbd5e1",
+      "textSubtle": "#94a3b8",
+      "link": "#a78bfa",
+      "success": "#4ade80",
+      "warning": "#fbbf24",
+      "danger": "#f87171"
+    }
+  },
+  "typography": {
+    "fontFamilyPrimary": "Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    "fontFamilyMono": "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace",
+    "weights": { "regular": 400, "medium": 500, "semibold": 600, "bold": 700, "extrabold": 800 },
+    "sizes": {
+      "xs": "12px",
+      "sm": "14px",
+      "base": "16px",
+      "lg": "18px",
+      "xl": "20px",
+      "2xl": "24px",
+      "3xl": "30px",
+      "4xl": "36px"
+    },
+    "lineHeights": { "tight": 1.2, "normal": 1.5, "relaxed": 1.7 }
+  },
+  "spacing": {
+    "xs": "4px",
+    "sm": "8px",
+    "md": "16px",
+    "lg": "24px",
+    "xl": "32px",
+    "2xl": "48px"
+  },
+  "radius": {
+    "sm": "6px",
+    "md": "12px",
+    "lg": "16px",
+    "xl": "20px",
+    "pill": "9999px"
+  },
+  "shadow": {
+    "sm": "0 1px 2px 0 rgba(15, 23, 42, 0.06)",
+    "md": "0 4px 12px -2px rgba(15, 23, 42, 0.10)",
+    "lg": "0 10px 25px -5px rgba(124, 58, 237, 0.25)"
+  },
+  "email": {
+    "preferredColorScheme": "light",
+    "maxWidthPx": 600,
+    "outerBackground": {
+      "light": "#f1f5f9",
+      "dark": "#020617"
+    },
+    "containerBackground": {
+      "light": "#ffffff",
+      "dark": "#0f172a"
+    },
+    "containerBorder": {
+      "light": "#e2e8f0",
+      "dark": "#334155"
+    },
+    "containerRadiusPx": 16,
+    "containerPaddingPx": 32,
+    "headerBackground": {
+      "light": "linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)",
+      "dark": "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)"
+    },
+    "headerHeightPx": 96,
+    "footer": {
+      "text": "© SNBudget — Budget smarter. Split easier.",
+      "address": "",
+      "unsubscribeNote": "You're receiving this because you have a SNBudget account."
+    },
+    "button": {
+      "background": "#7c3aed",
+      "backgroundHover": "#6d28d9",
+      "color": "#ffffff",
+      "radiusPx": 12,
+      "paddingY": "12px",
+      "paddingX": "24px",
+      "fontWeight": 600,
+      "fontSize": "16px"
+    },
+    "link": {
+      "color": "#7c3aed",
+      "decoration": "underline"
+    },
+    "fontFamily": "Inter, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+    "rules": [
+      "Use table-based layout (no flex/grid) for max email-client compatibility.",
+      "Inline all CSS — Gmail strips <style> in some contexts.",
+      "Reference logo via absolute https URL (logo.iconPngUrl); do not embed SVG (Gmail strips it).",
+      "Do not rely on web fonts — always include a system-font fallback stack.",
+      "Keep total width <= email.maxWidthPx (600px) and images <= 600px wide.",
+      "Provide plain-text alternative; do not put critical info only in images."
+    ]
+  }
+}
+

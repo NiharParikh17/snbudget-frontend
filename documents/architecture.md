@@ -84,6 +84,13 @@ Split-complementary scheme aligned to the existing favicon:
 | Surface (light) | `slate-50` / white | Page + card backgrounds |
 | Surface (dark) | `slate-950` / `slate-900` | Page + card backgrounds |
 
+These values are mirrored in [`documents/brand-tokens.json`](./brand-tokens.json),
+which is the **language-neutral source of truth** shared with the backend so
+transactional emails (verification, password reset, settle-up reminders, …)
+stay on-brand. See [`brand-tokens.md`](./brand-tokens.md) for the schema and
+the contract with the backend. **Whenever you change a brand value here, also
+update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
+
 ## Routing
 
 - Router: `react-router-dom` v7. A single `<BrowserRouter>` lives in

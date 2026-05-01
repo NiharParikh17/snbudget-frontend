@@ -6,6 +6,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Brand tokens** (`documents/brand-tokens.json` + `documents/brand-tokens.md`) —
+  language-neutral, versioned source of truth for SNBudget's visual identity:
+  product info, logo (inline SVG + absolute PNG URLs for emails), full
+  light/dark colour palettes, typography scale, spacing, radius, shadow, and
+  an `email` section with email-client-safe overrides (max width, container
+  backgrounds, header gradient, button styling, footer text, hard rules).
+  Intended to be consumed by both this frontend and the backend's
+  transactional-email templates so verification / password-reset / settle-up
+  emails stay on-brand instead of drifting (e.g. the current green-themed
+  verification email). Schema versioned at `1.0.0`; backend should pin to
+  `^1.x`. Linked from `documents/README.md` and `documents/architecture.md`.
+
+### Added
 - **Authentication UI** — `/signup` and `/signin` pages backed by the
   SNBudget Identity API (`POST /api/users`, `POST /api/auth/login`,
   `POST /api/auth/refresh`, `POST /api/auth/logout`). Registration sends

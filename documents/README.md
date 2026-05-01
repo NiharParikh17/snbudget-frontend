@@ -11,6 +11,8 @@ architecture decisions for SNBudget. It must be kept in sync with the codebase.
 | [`architecture.md`](./architecture.md)             | High-level frontend architecture & conventions    |
 | [`domain-model.md`](./domain-model.md)             | Core entities (User, Budget, Transaction, Split…) |
 | [`roadmap.md`](./roadmap.md)                       | Phased plan of what we're building, and when      |
+| [`brand-tokens.md`](./brand-tokens.md)             | Schema for `brand-tokens.json` (shared visual identity for app + emails) |
+| [`brand-tokens.json`](./brand-tokens.json)         | Single source of truth: colors, logo, typography, email styling |
 | [`changelog.md`](./changelog.md)                   | Human-readable log of notable changes             |
 
 ## Rules for this folder
