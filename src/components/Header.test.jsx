@@ -12,12 +12,18 @@ function renderHeader() {
 }
 
 describe('Header', () => {
-  it('shows the SNBudget brand link', () => {
+  it('shows the SNBudget brand logo link', () => {
     renderHeader()
-    expect(screen.getByRole('link', { name: /snbudget/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: /snbudget home/i })).toHaveAttribute(
       'href',
       '/',
     )
+  })
+
+  it('renders the SNBudget wordmark inside the brand link', () => {
+    renderHeader()
+    const brandLink = screen.getByRole('link', { name: /snbudget home/i })
+    expect(within(brandLink).getByText('SNBudget')).toBeInTheDocument()
   })
 
   it('exposes Sign in and Sign up actions in the account nav', () => {
@@ -33,5 +39,3 @@ describe('Header', () => {
     )
   })
 })
-
-

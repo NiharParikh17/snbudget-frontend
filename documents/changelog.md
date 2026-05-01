@@ -6,6 +6,57 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **ThemeContext** (`src/context/ThemeContext.jsx`) — app-wide theme management
+  with `ThemeProvider` + `useTheme` hook. Supports `'system'` (OS default,
+  used pre-auth everywhere), `'light'`, and `'dark'` modes. Chosen mode is
+  persisted in `localStorage` under `snbudget-theme`; a future Settings page
+  will sync it to the user's profile. `ThemeProvider` is mounted once in
+  `src/main.jsx` above `BrowserRouter`.
+- **Logo component** (`src/components/Logo.jsx`) — reusable inline-SVG brand
+  mark (lightning bolt + gradient wordmark). Accepts `iconOnly` and `className`
+  props. Used in both `Header` and `Footer` as the single source of truth for
+  the brand mark.
+- **Class-based dark mode** — `@custom-variant dark` in `src/index.css` wires
+  Tailwind's `dark:` utilities to the `.dark` class on `<html>` (managed by
+  `ThemeContext`). System-default behaviour is preserved: when `theme='system'`
+  the context mirrors `window.matchMedia('(prefers-color-scheme: dark)')`.
+- **Inter typeface** — loaded from Google Fonts in `index.html` and applied
+  globally in `Layout` via `font-[Inter,system-ui,sans-serif]`.
+- **Gradient hero section** in `Home` — radial violet/cyan blobs, an early
+  access badge, a stronger gradient headline, and a trust strip
+  ("No bank linking required", "Your data stays yours", "Free during early
+  access"). CTAs updated to "Get started free" / "Sign in".
+- **Feature card icons** (inline SVG) on the Home page feature grid.
+- Tests for `ThemeContext` (8 tests, with `matchMedia` stub) and `Logo`
+  (3 tests). `Header` and `Footer` tests updated for the new Logo link.
+  `Button` test extended with a `cursor-pointer` assertion. `Home` test
+  updated for the new secondary CTA label. Total: 47 tests (was 33).
+- `matchMedia` stub added to `src/test/setup.js` so any component using the
+  Media Query API works in jsdom without per-test mocking.
+
+### Changed
+- **Color theme migrated from indigo → violet** to align with the existing
+  favicon palette (`#7c3aed` primary, `#06b6d4` cyan accent). Every `indigo-`
+  class in `Header`, `Footer`, `About`, `Privacy`, `Terms`, and `Button` is
+  now `violet-`.
+- **Button** — rounded to `rounded-xl`; padding increased to `px-5 py-2.5`;
+  `font-medium` → `font-semibold`; added `cursor-pointer`, `select-none`, and
+  `transition-all duration-200`; hover now lifts the button (`-translate-y-px`)
+  and adds a coloured shadow on primary.
+- **Header** — taller (`h-16`); heavier backdrop blur (`backdrop-blur-md`);
+  brand now renders `<Logo />` with `aria-label="SNBudget home"` instead of
+  plain text.
+- **Footer** — logo home-link replaces the plain copyright text on the left;
+  logo + nav + year laid out in one responsive flex row.
+- **Layout** — Inter font applied globally; `antialiased` added.
+- **Home hero** — richer gradient background, larger headline (`text-5xl
+  sm:text-6xl font-extrabold`), trust strip, updated CTA labels.
+- **Home feature cards** — `rounded-2xl`, subtle hover lift, icon badge.
+- **About / Privacy** feature/principle cards — `rounded-2xl`, `p-5`,
+  `shadow-sm`.
+- `index.html` — title changed to "SNBudget — Budget smarter. Split easier.",
+  `meta description` added, Google Fonts `<link>` added.
+
 - **About page** at `src/pages/About.jsx` (route `/about`) describing what
   SNBudget is, who it's for, what you can do, how it works, current status,
   non-goals, and privacy stance. Linked from the global Footer.

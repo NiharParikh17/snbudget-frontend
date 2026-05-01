@@ -8,12 +8,15 @@
 - **React 19** with function components and hooks.
 - **Vite** for dev server and build.
 - **Tailwind CSS v4** via the official `@tailwindcss/vite` plugin. The single
-  entry point is `@import "tailwindcss";` in `src/index.css` — no
-  `tailwind.config.js` is required for v4 unless we need theme customization.
+  entry point is `@import "tailwindcss";` in `src/index.css`. Dark mode is
+  class-based (`@custom-variant dark (&:where(.dark, .dark *))`), managed
+  entirely by `ThemeContext`.
 - **react-router-dom v7** for client-side routing. `BrowserRouter` is mounted
   in `src/main.jsx`; the route table lives in `src/App.jsx`. Internal
   navigation must use `<Link to="...">` (never `<a href>`) to avoid full
   reloads.
+- **Inter** (Google Fonts) — the primary typeface, loaded in `index.html` and
+  applied globally via `Layout`.
 - **Vitest** + **React Testing Library** + **jsdom** for tests.
 - **ESLint** (flat config) for static analysis.
 
@@ -22,29 +25,64 @@
 ```
 src/
 ├── assets/            # Static assets imported by components
-├── components/        # Reusable UI: Button, Header, Footer, Layout, ...
+├── components/        # Reusable UI: Button, Logo, Header, Footer, Layout, ...
+├── context/           # React contexts: ThemeContext (theme provider + useTheme hook)
 ├── pages/             # Route-level components: Home, About, ...
-├── test/setup.js      # Global test setup (jest-dom matchers, cleanup)
+├── test/setup.js      # Global test setup (jest-dom matchers, matchMedia stub, cleanup)
 ├── App.jsx            # Composes Layout + the route table
 ├── App.test.jsx       # Tests for App
-├── index.css          # Tailwind entry
-└── main.jsx           # ReactDOM bootstrap (mounts BrowserRouter)
+├── index.css          # Tailwind entry + @custom-variant dark + brand CSS vars
+└── main.jsx           # ReactDOM bootstrap (mounts ThemeProvider, BrowserRouter)
 ```
 
 ## App shell
 
 - `components/Layout.jsx` is the single chrome wrapper for every page. It
   renders `Header` on top, the page `children` in a `<main>` that flexes to
-  fill the viewport, and `Footer` pinned to the bottom.
+  fill the viewport, and `Footer` pinned to the bottom. It also applies the
+  Inter typeface globally via `font-[Inter,system-ui,sans-serif]`.
 - `components/Header.jsx` is the global top bar. For unauthenticated users it
-  shows the brand on the left and **Sign in** / **Sign up** actions in the
+  shows the **Logo** on the left and **Sign in** / **Sign up** actions in the
   top-right. When auth lands, this component will swap in a user menu.
 - `components/Footer.jsx` is the static footer used across the whole app
-  (links to About / Privacy / Terms, dynamic copyright year).
+  (Logo home-link on the left, links to About / Privacy / Terms + copyright
+  year on the right).
 - `components/Button.jsx` is the **only** place button styling lives. Use it
   (with `variant` and `as` props) instead of re-typing button Tailwind
   classes. Pass `as={Link} to="..."` to render a router link with consistent
   styling.
+- `components/Logo.jsx` is the **only** place the brand mark (SVG bolt +
+  gradient wordmark) is defined. Use it in any surface that needs the brand
+  identity.
+
+## Theme system
+
+`context/ThemeContext.jsx` owns the app-wide colour scheme:
+
+- **`ThemeProvider`** — mounts once in `main.jsx` above `BrowserRouter`.
+  Reads the user's preference from `localStorage` (key `snbudget-theme`),
+  defaulting to `'system'`. Applies or removes the `.dark` class on
+  `<html>` and sets `color-scheme` accordingly.
+- **`useTheme()`** — returns `{ theme, setTheme }`. Use this hook inside any
+  component that needs to read or change the theme.
+- Supported values: `'system'` (follows OS preference), `'light'`, `'dark'`.
+- Until a Settings page is built, the app defaults to `'system'` for all
+  unauthenticated screens. A future Settings page will call `setTheme` and
+  (eventually) persist the choice to the user's profile.
+- Tailwind's `dark:` utilities are wired to the `.dark` class via
+  `@custom-variant dark (&:where(.dark, .dark *))` in `src/index.css`.
+
+## Colour palette
+
+Split-complementary scheme aligned to the existing favicon:
+
+| Token | Value | Usage |
+|-------|-------|-------|
+| Primary (light) | `violet-600` `#7c3aed` | Buttons, brand mark, accents |
+| Primary (dark) | `violet-400` `#a78bfa` | Same, dark mode |
+| Accent | `cyan-500` `#06b6d4` | Gradient highlights |
+| Surface (light) | `slate-50` / white | Page + card backgrounds |
+| Surface (dark) | `slate-950` / `slate-900` | Page + card backgrounds |
 
 ## Routing
 

@@ -25,7 +25,7 @@ describe('Home page', () => {
       screen.getByRole('link', { name: /get started/i }),
     ).toHaveAttribute('href', '/signup')
     expect(
-      screen.getByRole('link', { name: /already have an account/i }),
+      screen.getByRole('link', { name: /sign in/i }),
     ).toHaveAttribute('href', '/signin')
   })
 
@@ -37,5 +37,3 @@ describe('Home page', () => {
     expect(cards).toHaveLength(3)
   })
 })
-
-
