@@ -50,11 +50,13 @@ snbudget-frontend/
 ├── public/                 # Static assets served as-is
 ├── src/
 │   ├── assets/             # Imported assets (images, svgs)
+│   ├── components/         # Reusable UI (Button, Header, Footer, Layout, …)
+│   ├── pages/              # Route-level components (Home, About, …)
 │   ├── test/setup.js       # Vitest setup (RTL matchers, cleanup)
-│   ├── App.jsx             # Root component
+│   ├── App.jsx             # Composes Layout + the route table
 │   ├── App.test.jsx        # Tests for App
 │   ├── index.css           # Tailwind entry (@import "tailwindcss")
-│   └── main.jsx            # React entry point
+│   └── main.jsx            # React entry point (mounts BrowserRouter)
 ├── .github/
 │   └── copilot-instructions.md   # Required workflow for AI assistants
 ├── eslint.config.js
@@ -83,5 +85,9 @@ See [`documents/README.md`](./documents/README.md) for the doc index.
 
 ## Status
 
-🚧 Early scaffolding. The current UI is a placeholder landing page; product
-features are being designed in `documents/`.
+🚧 Early scaffolding. The app currently ships unauthenticated public pages —
+**Home** (`/`), **About** (`/about`), **Privacy** (`/privacy`), and
+**Terms** (`/terms`) — inside the global `Layout` (Header with Sign in /
+Sign up, static Footer). Routing is wired up with `react-router-dom`. Auth
+flows and product features are next — see
+[`documents/roadmap.md`](./documents/roadmap.md).

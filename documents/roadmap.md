@@ -10,7 +10,12 @@
 - [x] Vitest + React Testing Library configured
 - [x] `documents/` folder with product, architecture, domain, roadmap
 - [x] AI workflow instructions (`.github/copilot-instructions.md`)
-- [ ] Basic app shell (header, layout container, routing-ready)
+- [x] Basic app shell (Header with Sign in / Sign up, static Footer, Layout
+      wrapper, unauthenticated Home page)
+- [x] Routing (`react-router-dom` v7) with `/` and `/about` routes
+- [x] About page (`/about`) — kept in sync per AI workflow rule 3b
+- [x] Privacy page (`/privacy`) — pre-launch statement of intent
+- [x] Terms page (`/terms`) — pre-launch terms of use
 
 ## Phase 1 — Local-only budgeting
 
