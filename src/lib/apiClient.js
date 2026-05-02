@@ -13,7 +13,7 @@
  *     an `ApiError` carrying `status`, `message`, and any `fieldErrors`.
  */
 
-const DEFAULT_BASE_URL = 'http://localhost:8081'
+const DEFAULT_BASE_URL = 'http://localhost:8080'
 
 export function getApiBaseUrl() {
   // import.meta.env is statically replaced by Vite. Guard for non-Vite

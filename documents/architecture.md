@@ -174,10 +174,18 @@ src/
 
 ## Backend integration
 
-- The SNBudget Identity API (`http://localhost:8081` by default) is the
-  first backend the frontend talks to. Authentication is implemented end
-  to end (signup, signin, silent refresh, logout); see "Auth & API
-  integration" above. Other product APIs (categories, budgets,
-  transactions, splits) will land in `src/api/` alongside `auth.js` /
-  `users.js` and use the same `lib/apiClient.js` wrapper.
+- All API calls are routed through the **SNBudget API gateway** at
+  `http://localhost:8080` (configurable via `VITE_API_BASE_URL`).
+  Endpoint basepaths are unchanged — the gateway transparently proxies to
+  the appropriate downstream service (e.g. `identity-management` for
+  `/api/auth/*` and `/api/users/*`). Future service endpoints (categories,
+  budgets, transactions, splits) will be added behind the same gateway
+  and reached via the same `lib/apiClient.js` wrapper without any frontend
+  routing change.
+- Authentication is implemented end to end (signup, signin, silent refresh,
+  logout); see "Auth & API integration" above. Other product APIs will land
+  in `src/api/` alongside `auth.js` / `users.js`.
+- The gateway MUST send `Access-Control-Allow-Credentials: true` with an
+  explicit `Access-Control-Allow-Origin` (not `*`) for
+  `credentials: 'include'` to work cross-origin in local dev.
 

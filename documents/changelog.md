@@ -5,8 +5,19 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
-### Added
-- **Email verification result page** (`src/pages/EmailVerified.jsx`, route
+### Changed
+- **API gateway** — all frontend API calls now route through the SNBudget
+  API gateway at `http://localhost:8080` (was `http://localhost:8081`
+  pointing directly at the `identity-management` service). Updated the
+  `DEFAULT_BASE_URL` fallback in `src/lib/apiClient.js` and the example
+  value + comment in `.env.example`. Endpoint basepaths (`/api/auth/*`,
+  `/api/users/*`, etc.) are unchanged. `documents/architecture.md`
+  "Backend integration" section updated to document the gateway topology.
+  > ⚠️ If you have a local `.env` or `.env.local` file with
+  > `VITE_API_BASE_URL=http://localhost:8081` you must update it to
+  > `http://localhost:8080` for local development to work.
+
+ (`src/pages/EmailVerified.jsx`, route
   `/email-verified`) — public landing page the `identity-management`
   backend redirects to after a user clicks the verification link in their
   welcome email. Reads `?status` from the URL only (no API call — the
