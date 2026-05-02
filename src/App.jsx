@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Layout from './components/Layout.jsx'
 import RequireAuth from './components/RequireAuth.jsx'
+import RequireSubscription from './components/RequireSubscription.jsx'
 import Home from './pages/Home.jsx'
 import About from './pages/About.jsx'
 import Privacy from './pages/Privacy.jsx'
@@ -9,6 +10,7 @@ import SignIn from './pages/SignIn.jsx'
 import SignUp from './pages/SignUp.jsx'
 import Welcome from './pages/Welcome.jsx'
 import EmailVerified from './pages/EmailVerified.jsx'
+import ChoosePlan from './pages/ChoosePlan.jsx'
 
 function App() {
   return (
@@ -22,10 +24,20 @@ function App() {
         <Route path="/signup" element={<SignUp />} />
         <Route path="/email-verified" element={<EmailVerified />} />
         <Route
+          path="/choose-plan"
+          element={
+            <RequireAuth>
+              <ChoosePlan />
+            </RequireAuth>
+          }
+        />
+        <Route
           path="/welcome"
           element={
             <RequireAuth>
-              <Welcome />
+              <RequireSubscription>
+                <Welcome />
+              </RequireSubscription>
             </RequireAuth>
           }
         />

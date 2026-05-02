@@ -5,6 +5,74 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Subscription gating + plan picker** — after every successful
+  authentication, `AuthContext` calls `GET /api/subscriptions/me` and
+  exposes a new `subscriptionStatus` (`'unknown' | 'none' | 'active'`)
+  on the auth context. A `204 No Content` (or any error — fail closed)
+  maps to `'none'`. New guard `src/components/RequireSubscription.jsx`
+  composes inside `RequireAuth` and redirects users without an active
+  subscription to a new `/choose-plan` screen. `/welcome` is now
+  wrapped with both guards.
+- **`pages/ChoosePlan.jsx`** — industry-style 3-column pricing grid
+  (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) listing products from
+  `GET /api/subscriptions/products`. Cards are a proper accessible
+  radio group (`role="radiogroup"` / `role="radio"`, arrow keys + Home
+  / End + space / enter). The first plan is preselected. A "Best value"
+  badge is shown on the YEARLY plan when its price is strictly cheaper
+  than 12× any MONTHLY plan in the catalog. Loading skeletons, error +
+  retry, and an empty state with sign-out are all covered. The
+  **Continue** button is rendered but **disabled** with a `title="Coming
+  soon"` tooltip + visible helper text — no `POST /api/subscriptions`
+  call is made yet (deferred to the checkout PR). Active subscribers
+  are bounced to `/welcome`.
+- **`api/subscriptions.js`** — wrappers `listProducts(accessToken)` and
+  `getCurrentSubscription(accessToken)` against the gateway base path
+  `/api/subscriptions`. JSDoc documents the `204 → null` contract.
+- **`lib/price.js`** — `formatAmount`, `formatPrice`, and
+  `compareProducts` helpers. Currency hard-coded to USD until the
+  backend exposes a currency field (see TODO below).
+- Tests: `subscriptions.test.js` (3 tests — path, bearer header, 204
+  → null), `price.test.js` (7 tests), `RequireSubscription.test.jsx`
+  (4 tests), `ChoosePlan.test.jsx` (9 tests). Existing
+  `AuthContext.test.jsx` extended with subscription-bootstrap +
+  fail-closed cases (the `logout` test was rewritten to find the
+  `/api/auth/logout` call by URL match because subscription `/me` now
+  shifts the call index). `App.test.jsx` gains a `/choose-plan`
+  redirect-when-anonymous case.
+
+### Changed
+- **About page** — "Where we are today" updated to mention the new
+  subscription-plan picker (preview only; checkout not yet enabled).
+- **Privacy page** — added a paragraph clarifying that no payment data
+  is collected, no payment processor is contacted, and that the section
+  will be expanded once checkout goes live.
+- **Terms page** — added a paragraph stating that no payment is taken
+  and no subscription fees are owed yet, and that pricing / billing /
+  refund / renewal terms will be added before checkout goes live.
+
+### Security
+- **Fail-closed subscription gate** — any error from
+  `/api/subscriptions/me` (network, 5xx, malformed body) maps to
+  `subscriptionStatus = 'none'` so a transient outage cannot
+  accidentally let an unsubscribed user into gated pages.
+- Subscription state is wiped on logout (`setAnonymous` resets
+  `subscriptionStatus` back to `'unknown'`).
+- No new runtime dependencies — only native `fetch`. `npm audit`
+  remains at **0 vulnerabilities** (to be re-verified by `npm audit` /
+  `npm outdated` after this change is applied).
+
+### TODO (under [Unreleased])
+- **Checkout (POST /api/subscriptions)** — wire the Continue button on
+  `/choose-plan`, add a confirmation step, then bump the relevant
+  copy on About / Privacy / Terms with the chosen payment-processor
+  details. The disabled-button "Coming soon" UX is the placeholder.
+- **Currency from backend** — `lib/price.js` hard-codes USD; add a
+  `currency` field to `ProductResponse` (or expose it via a separate
+  catalog meta endpoint) and wire it through `formatAmount`.
+- **Plans entry point in the Header** — once active subscribers can
+  upgrade/downgrade, expose a "Plans" link from the Header user menu.
+
 ### Changed
 - **API gateway** — all frontend API calls now route through the SNBudget
   API gateway at `http://localhost:8080` (was `http://localhost:8081`

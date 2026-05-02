@@ -73,6 +73,13 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('redirects /choose-plan to /signin when anonymous', async () => {
+    renderAt('/choose-plan')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^sign in$/i }),
+    ).toBeInTheDocument()
+  })
+
   it('redirects unknown routes to Home', () => {
     renderAt('/does-not-exist')
     expect(

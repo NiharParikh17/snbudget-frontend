@@ -4,6 +4,33 @@
 
 ## Entities
 
+### SubscriptionProduct
+
+A purchasable plan in the catalog. Owned and managed by the
+subscription-management service.
+
+- `id`
+- `name`, `description`
+- `billingCycle` — `WEEKLY | MONTHLY | YEARLY | LIFETIME`
+- `price` (decimal; currency assumed USD until the API exposes one)
+- `status` — `ACTIVE | INACTIVE | DEPRECATED`
+- `createdAt`, `updatedAt`
+
+### UserSubscription
+
+The caller's link to a `SubscriptionProduct`. Each user has at most one
+**active** subscription at a time.
+
+- `id`, `product` (`SubscriptionProduct`)
+- `status` — `ACTIVE | CANCELLED | EXPIRED`
+- `autoRenew` (forced `false` for `LIFETIME`)
+- `startedAt`, `expiresAt` (null for `LIFETIME`), `cancelledAt`
+
+The frontend gates all authenticated pages on a non-null `ACTIVE`
+subscription. `GET /api/subscriptions/me` returns `204 No Content` when
+the user has no active subscription, in which case the user is sent to
+`/choose-plan`.
+
 ### User
 
 - `id`

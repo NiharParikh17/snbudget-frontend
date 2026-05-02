@@ -47,6 +47,15 @@ function Terms() {
             transmitter, or financial advisor, and nothing in the product
             constitutes financial, legal, or tax advice.
           </p>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
+            SNBudget is moving to a paid subscription model. At this
+            stage you may see a plan-picker screen after signing in, but
+            checkout is not yet enabled — no payment is taken, no
+            subscription is created, and no fees are owed. Specific
+            pricing, billing, refund, and renewal terms will be added
+            here before checkout goes live, and your continued use after
+            that update will constitute acceptance of those terms.
+          </p>
         </section>
 
         <section className="mt-12">

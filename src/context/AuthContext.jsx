@@ -9,6 +9,7 @@ import {
 } from 'react'
 import * as authApi from '../api/auth.js'
 import * as usersApi from '../api/users.js'
+import * as subscriptionsApi from '../api/subscriptions.js'
 
 /**
  * AuthContext — owns the in-memory auth session.
@@ -26,6 +27,15 @@ import * as usersApi from '../api/users.js'
  *   'loading'        — we have not yet completed the initial silent refresh
  *   'anonymous'      — the user is not signed in
  *   'authenticated'  — `accessToken` and `userId` are populated
+ *
+ * Subscription gating:
+ *   When the session is `authenticated` we additionally track
+ *   `subscriptionStatus`:
+ *     'unknown' — we have not yet resolved the caller's subscription
+ *     'none'    — the caller has no active subscription (must pick a plan)
+ *     'active'  — the caller has an active subscription
+ *   We fail **closed**: any error talking to `/api/subscriptions/me` maps
+ *   to `'none'` so a transient outage cannot grant access to gated pages.
  *
  * Implementation note:
  *   Internal helpers are stored on a single `helpersRef` so they can call
@@ -46,6 +56,7 @@ const initialState = {
   accessToken: null,
   userId: null,
   expiresAt: null,
+  subscriptionStatus: 'unknown',
 }
 
 export function AuthProvider({ children }) {
@@ -81,7 +92,28 @@ export function AuthProvider({ children }) {
         accessToken: null,
         userId: null,
         expiresAt: null,
+        subscriptionStatus: 'unknown',
       })
+    }
+
+    const loadSubscription = async (accessToken) => {
+      // Fail closed: any error → assume no subscription so RequireSubscription
+      // routes the user to /choose-plan instead of silently letting them in.
+      let nextStatus = 'none'
+      try {
+        const sub = await subscriptionsApi.getCurrentSubscription(accessToken)
+        if (sub && sub.status === 'ACTIVE') nextStatus = 'active'
+      } catch {
+        nextStatus = 'none'
+      }
+      // Guard against stale updates: only apply if the access token still
+      // matches the current session (the user may have logged out or
+      // refreshed in the meantime).
+      setSession((prev) =>
+        prev.accessToken === accessToken
+          ? { ...prev, subscriptionStatus: nextStatus }
+          : prev,
+      )
     }
 
     const applyTokenResponse = (token) => {
@@ -91,12 +123,16 @@ export function AuthProvider({ children }) {
         accessToken: token.accessToken,
         userId: token.userId,
         expiresAt,
+        subscriptionStatus: 'unknown',
       })
       clearTimer()
       const delay = Math.max(token.expiresIn * 1000 - REFRESH_LEEWAY_MS, 5_000)
       refreshTimerRef.current = setTimeout(() => {
         helpersRef.current.refreshSilently()
       }, delay)
+      // Fire-and-forget — RequireSubscription renders nothing while
+      // `subscriptionStatus === 'unknown'`, so the UI naturally waits.
+      loadSubscription(token.accessToken)
     }
 
     const refreshSilently = async () => {
@@ -133,7 +169,7 @@ export function AuthProvider({ children }) {
       }
     }
 
-    helpersRef.current = { refreshSilently, login, register, logout, clearTimer }
+    helpersRef.current = { refreshSilently, login, register, logout, clearTimer, loadSubscription }
   }
 
   // Stable public wrappers — these only touch helpersRef inside the
@@ -142,6 +178,11 @@ export function AuthProvider({ children }) {
   const login = useCallback((credentials) => helpersRef.current.login(credentials), [])
   const register = useCallback((payload) => helpersRef.current.register(payload), [])
   const logout = useCallback(() => helpersRef.current.logout(), [])
+  const refreshSubscription = useCallback(() => {
+    const token = sessionRef.current.accessToken
+    if (!token) return Promise.resolve()
+    return helpersRef.current.loadSubscription(token)
+  }, [])
 
   // Initial silent refresh on mount.
   useEffect(() => {
@@ -150,8 +191,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ ...session, login, register, logout }),
-    [session, login, register, logout],
+    () => ({ ...session, login, register, logout, refreshSubscription }),
+    [session, login, register, logout, refreshSubscription],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

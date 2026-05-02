@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { AuthProvider, useAuth } from './AuthContext.jsx'
+import * as AuthCtxModule from './AuthContext.jsx'
 
 function tokenResponse(overrides = {}) {
   return new Response(
@@ -93,6 +94,8 @@ describe('AuthContext', () => {
   it('logout() calls the API with the bearer token then clears state', async () => {
     globalThis.fetch
       .mockResolvedValueOnce(tokenResponse({ accessToken: 'live-token' }))
+      // subscription /me lookup triggered after authentication — return 204
+      .mockResolvedValueOnce(new Response(null, { status: 204 }))
       // logout response
       .mockResolvedValueOnce(new Response(null, { status: 200 }))
 
@@ -109,9 +112,74 @@ describe('AuthContext', () => {
       expect(screen.getByTestId('status').textContent).toBe('anonymous'),
     )
 
-    const logoutCall = globalThis.fetch.mock.calls[1]
-    expect(logoutCall[0]).toMatch(/\/api\/auth\/logout$/)
+    const logoutCall = globalThis.fetch.mock.calls.find(([url]) =>
+      /\/api\/auth\/logout$/.test(url),
+    )
+    expect(logoutCall).toBeDefined()
     expect(logoutCall[1].headers.Authorization).toBe('Bearer live-token')
+  })
+
+  it('loads subscription status after authentication and clears it on logout', async () => {
+    globalThis.fetch
+      .mockResolvedValueOnce(tokenResponse({ accessToken: 'tok' }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ id: 's1', status: 'ACTIVE' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }))
+
+    function SubProbe() {
+      const auth = AuthCtxModule.useAuth()
+      return (
+        <span data-testid="sub">{auth.subscriptionStatus}</span>
+      )
+    }
+
+    render(
+      <MemoryRouter>
+        <AuthCtxModule.AuthProvider>
+          <Probe />
+          <SubProbe />
+        </AuthCtxModule.AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('sub').textContent).toBe('active'),
+    )
+
+    await act(async () => {
+      screen.getByText('logout').click()
+    })
+
+    await waitFor(() =>
+      expect(screen.getByTestId('sub').textContent).toBe('unknown'),
+    )
+  })
+
+  it('subscription status falls back to "none" when /me errors (fail closed)', async () => {
+    globalThis.fetch
+      .mockResolvedValueOnce(tokenResponse())
+      .mockRejectedValueOnce(new TypeError('boom'))
+
+    function SubProbe() {
+      const auth = AuthCtxModule.useAuth()
+      return <span data-testid="sub">{auth.subscriptionStatus}</span>
+    }
+
+    render(
+      <MemoryRouter>
+        <AuthCtxModule.AuthProvider>
+          <SubProbe />
+        </AuthCtxModule.AuthProvider>
+      </MemoryRouter>,
+    )
+
+    await waitFor(() =>
+      expect(screen.getByTestId('sub').textContent).toBe('none'),
+    )
   })
 })
 

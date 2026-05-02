@@ -41,6 +41,12 @@
       shipped against the SNBudget Identity API. Email verification is
       enforced by the backend; "Resend verification email" pending a
       backend endpoint.
+- [~] Subscription gating — `GET /api/subscriptions/me` is called on
+      every successful authentication; users with no active subscription
+      are routed to a new `/choose-plan` screen that lists products from
+      `GET /api/subscriptions/products`. Selection + checkout
+      (`POST /api/subscriptions`) are not yet wired — the Continue
+      button is disabled with a "Coming soon" hint.
 - [ ] Replace local persistence with API
 - [ ] Real multi-user splits
 

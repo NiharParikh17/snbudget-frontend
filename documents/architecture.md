@@ -108,7 +108,10 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
     other than `success` is treated as invalid (defensive default). The
     success state auto-redirects to `/signin` after 10 s with a CTA
     fallback.)
-  - `/welcome` → `pages/Welcome.jsx` (guarded by `RequireAuth`)
+  - `/welcome` → `pages/Welcome.jsx` (guarded by `RequireAuth` **and**
+    `RequireSubscription`)
+  - `/choose-plan` → `pages/ChoosePlan.jsx` (guarded by `RequireAuth`;
+    redirects active subscribers to `/welcome`)
   - `*` → redirect to `/` (until a dedicated 404 page exists)
 - Use `<Link>` / `<NavLink>` for in-app navigation; never bare `<a href>` for
   internal routes.
@@ -185,6 +188,14 @@ src/
 - Authentication is implemented end to end (signup, signin, silent refresh,
   logout); see "Auth & API integration" above. Other product APIs will land
   in `src/api/` alongside `auth.js` / `users.js`.
+- **Subscription Management API** (`/api/subscriptions/*`, accessed via the
+  same gateway) is wrapped in `src/api/subscriptions.js` (`listProducts`,
+  `getCurrentSubscription`). On every successful authentication
+  `AuthContext` calls `GET /api/subscriptions/me` and stores the result as
+  `subscriptionStatus: 'unknown' | 'none' | 'active'`. A `204 No Content`
+  (or any error — fail closed) maps to `'none'`. The
+  `components/RequireSubscription.jsx` guard composes inside `RequireAuth`
+  and redirects users with no active subscription to `/choose-plan`.
 - The gateway MUST send `Access-Control-Allow-Credentials: true` with an
   explicit `Access-Control-Allow-Origin` (not `*`) for
   `credentials: 'include'` to work cross-origin in local dev.

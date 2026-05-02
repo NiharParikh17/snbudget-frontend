@@ -128,7 +128,10 @@ function About() {
             plus the first authenticated flows: <strong>Sign up</strong>
             and <strong>Sign in</strong>, backed by the SNBudget Identity
             API. New accounts must verify their email address (via a link
-            we email you) before they can sign in. The budgeting and
+            we email you) before they can sign in. After signing in,
+            users are asked to <strong>choose a subscription plan</strong>
+            — the plan picker is live for preview, but checkout is not
+            yet enabled and no payments are processed. The budgeting and
             splitting features are next; see the{' '}
             <Link
               to="/"
