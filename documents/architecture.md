@@ -184,7 +184,7 @@ src/
   `http://localhost:8080` (configurable via `VITE_API_BASE_URL`).
   Endpoint basepaths are unchanged — the gateway transparently proxies to
   the appropriate downstream service (e.g. `identity-management` for
-  `/api/auth/*` and `/api/users/*`). Future service endpoints (categories,
+  `/api/identity/auth/*` and `/api/identity/users/*`). Future service endpoints (categories,
   budgets, transactions, splits) will be added behind the same gateway
   and reached via the same `lib/apiClient.js` wrapper without any frontend
   routing change.

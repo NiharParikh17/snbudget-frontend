@@ -73,7 +73,7 @@ describe('SignUp page', () => {
     })
 
     await waitFor(() => {
-      const createCall = globalThis.fetch.mock.calls.find((c) => c[0].endsWith('/api/users'))
+      const createCall = globalThis.fetch.mock.calls.find((c) => c[0].endsWith('/api/identity/users'))
       expect(createCall).toBeDefined()
       const body = JSON.parse(createCall[1].body)
       expect(body).toMatchObject({

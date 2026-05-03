@@ -187,7 +187,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   (4 tests), `ChoosePlan.test.jsx` (9 tests). Existing
   `AuthContext.test.jsx` extended with subscription-bootstrap +
   fail-closed cases (the `logout` test was rewritten to find the
-  `/api/auth/logout` call by URL match because subscription `/me` now
+  `/api/identity/auth/logout` call by URL match because subscription `/me` now
   shifts the call index). `App.test.jsx` gains a `/choose-plan`
   redirect-when-anonymous case.
 
@@ -228,8 +228,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   API gateway at `http://localhost:8080` (was `http://localhost:8081`
   pointing directly at the `identity-management` service). Updated the
   `DEFAULT_BASE_URL` fallback in `src/lib/apiClient.js` and the example
-  value + comment in `.env.example`. Endpoint basepaths (`/api/auth/*`,
-  `/api/users/*`, etc.) are unchanged. `documents/architecture.md`
+  value + comment in `.env.example`. Endpoint basepaths (`/api/identity/auth/*`,
+  `/api/identity/users/*`, etc.) are unchanged. `documents/architecture.md`
   "Backend integration" section updated to document the gateway topology.
   > ⚠️ If you have a local `.env` or `.env.local` file with
   > `VITE_API_BASE_URL=http://localhost:8081` you must update it to
@@ -275,8 +275,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **Authentication UI** — `/signup` and `/signin` pages backed by the
-  SNBudget Identity API (`POST /api/users`, `POST /api/auth/login`,
-  `POST /api/auth/refresh`, `POST /api/auth/logout`). Registration sends
+  SNBudget Identity API (`POST /api/identity/users`, `POST /api/identity/auth/login`,
+  `POST /api/identity/auth/refresh`, `POST /api/identity/auth/logout`). Registration sends
   the user to `/signin?registered=1` with a "check your email" banner
   (verification is enforced by the backend; the UI surfaces whatever
   message the API returns). After login the user lands on a temporary
