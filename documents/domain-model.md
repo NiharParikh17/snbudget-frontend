@@ -25,6 +25,15 @@ The caller's link to a `SubscriptionProduct`. Each user has at most one
 - `status` — `ACTIVE | CANCELLED | EXPIRED`
 - `autoRenew` (forced `false` for `LIFETIME`)
 - `startedAt`, `expiresAt` (null for `LIFETIME`), `cancelledAt`
+- `changeable` — backend-computed flag; if `false`, the frontend hides the
+  "Change plan" action.
+- `cancellable` — backend-computed flag; if `false`, the frontend hides the
+  "Cancel subscription" action. (Both flags `false` ⇒ the Settings page
+  shows a short "this plan can't be changed or cancelled" note in place
+  of the buttons.)
+- `pendingChange` — embedded `ScheduledProductChange` (or `null`) when a
+  product change is queued. Source of the "Plan change scheduled" banner
+  on `/settings`.
 
 The frontend gates all authenticated pages on a non-null `ACTIVE`
 subscription. `GET /api/subscriptions/me` returns `204 No Content` when
@@ -39,27 +48,16 @@ instead drops the record (so `/me` returns 204), the user is routed to
 
 ### ScheduledProductChange
 
-A queued plan change against a `UserSubscription`. There is no dedicated
-`GET` endpoint yet, so the frontend infers the latest pending change from
-`/api/subscriptions/me/history` (latest `CHANGE_SCHEDULED` not followed
-by `CHANGE_CANCELLED` / `CHANGE_APPLIED`).
+A queued plan change against a `UserSubscription`. The active subscription
+embeds the latest pending change inline as
+`UserSubscription.pendingChange` (or `null` when none is scheduled), so
+the frontend reads it directly from `GET /api/subscriptions/me`.
 
 - `id`, `targetProduct` (`SubscriptionProduct`)
 - `effectiveType` — `IMMEDIATE | ON_DATE | NEXT_BILLING_CYCLE | NEXT_BILLING_CYCLE_AFTER_DATE`
   (frontend currently only sends `NEXT_BILLING_CYCLE`)
 - `effectiveDate` (required for `ON_DATE` / `NEXT_BILLING_CYCLE_AFTER_DATE`)
 - `status` — `PENDING | APPLIED | CANCELLED`
-- `createdAt`
-
-### SubscriptionEvent
-
-A single entry in the subscription lifecycle log returned by
-`/api/subscriptions/me/history`. Used to render the "Activity" section
-on `/settings` and to infer pending plan changes (see above).
-
-- `id`, `subscriptionId`
-- `eventType` — `SUBSCRIBED | AUTO_RENEWED | CANCELLED | EXPIRED | AMENDED | CHANGE_SCHEDULED | CHANGE_CANCELLED | CHANGE_APPLIED`
-- `metadata` (optional free-text context)
 - `createdAt`
 
 ### UserSetting

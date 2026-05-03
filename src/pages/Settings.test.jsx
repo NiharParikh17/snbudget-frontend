@@ -54,27 +54,22 @@ const ACTIVE_SUB = {
   expiresAt: '2026-06-15T00:00:00Z',
   cancelledAt: null,
   createdAt: '2026-01-15T00:00:00Z',
+  changeable: true,
+  cancellable: true,
+  pendingChange: null,
 }
 
-const HISTORY_SUBSCRIBED_ONLY = [
-  {
-    id: 'e1',
-    subscriptionId: 's1',
-    eventType: 'SUBSCRIBED',
-    metadata: 'Initial signup',
-    createdAt: '2026-01-15T00:00:00Z',
-  },
-]
+const PENDING_CHANGE = {
+  id: 'c1',
+  targetProduct: PRO_YEARLY,
+  effectiveType: 'NEXT_BILLING_CYCLE',
+  effectiveDate: null,
+  status: 'PENDING',
+  createdAt: '2026-05-02T00:00:00Z',
+}
 
-function stubAllOk({
-  sub = ACTIVE_SUB,
-  history = HISTORY_SUBSCRIBED_ONLY,
-  settings = { settings: [] },
-} = {}) {
+function stubAllOk({ sub = ACTIVE_SUB, settings = { settings: [] } } = {}) {
   vi.spyOn(subscriptionsApi, 'getCurrentSubscription').mockResolvedValue(sub)
-  vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue(
-    history,
-  )
   vi.spyOn(settingsApi, 'getSettings').mockResolvedValue(settings)
 }
 
@@ -83,7 +78,7 @@ describe('Settings', () => {
     mockAuth()
   })
 
-  it('loads subscription, history and settings in parallel and renders the plan card', async () => {
+  it('loads subscription and settings in parallel and renders the plan card', async () => {
     stubAllOk()
     renderPage()
     expect(screen.getByTestId('subscription-skeleton')).toBeInTheDocument()
@@ -92,9 +87,7 @@ describe('Settings', () => {
     ).toBeInTheDocument()
     expect(await screen.findByText('Pro Monthly')).toBeInTheDocument()
     expect(screen.getByText(/\$9\.99 \/ month/i)).toBeInTheDocument()
-    // Status badge
     expect(screen.getByText('ACTIVE')).toBeInTheDocument()
-    // No preferences yet
     expect(
       await screen.findByText(/no preferences yet/i),
     ).toBeInTheDocument()
@@ -112,9 +105,6 @@ describe('Settings', () => {
     vi.spyOn(subscriptionsApi, 'getCurrentSubscription')
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce(ACTIVE_SUB)
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue(
-      HISTORY_SUBSCRIBED_ONLY,
-    )
     vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({ settings: [] })
     renderPage()
     expect(
@@ -127,9 +117,6 @@ describe('Settings', () => {
   it('shows a settings error with a retry button without breaking subscription rendering', async () => {
     vi.spyOn(subscriptionsApi, 'getCurrentSubscription').mockResolvedValue(
       ACTIVE_SUB,
-    )
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue(
-      HISTORY_SUBSCRIBED_ONLY,
     )
     vi.spyOn(settingsApi, 'getSettings')
       .mockRejectedValueOnce(new Error('boom'))
@@ -152,7 +139,6 @@ describe('Settings', () => {
     vi.spyOn(subscriptionsApi, 'getCurrentSubscription').mockResolvedValue(
       ACTIVE_SUB,
     )
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue([])
     vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({
       settings: [
         { key: 'THEME', value: 'DARK' },
@@ -160,45 +146,77 @@ describe('Settings', () => {
       ],
     })
     renderPage()
-    // Allow-list is empty, so the empty-state is rendered.
     expect(
       await screen.findByText(/no preferences yet/i),
     ).toBeInTheDocument()
   })
 
-  it('toggles auto-renew optimistically and rolls back on error', async () => {
+  it('does not render an auto-renew checkbox/switch (cancel is the only off-switch)', async () => {
     stubAllOk()
-    const updateSpy = vi
-      .spyOn(subscriptionsApi, 'updateAutoRenew')
-      .mockRejectedValue(new Error('boom'))
-    renderPage()
-    const toggle = await screen.findByRole('switch', { name: /auto-renew/i })
-    expect(toggle).toBeChecked()
-    await userEvent.click(toggle)
-    await waitFor(() => expect(updateSpy).toHaveBeenCalled())
-    // Rolled back to checked after the failure.
-    await waitFor(() => expect(toggle).toBeChecked())
-    expect(
-      await screen.findByText(/could not update auto-renew/i),
-    ).toBeInTheDocument()
-  })
-
-  it('hides the auto-renew toggle for LIFETIME subscriptions', async () => {
-    stubAllOk({
-      sub: {
-        ...ACTIVE_SUB,
-        product: { ...PRO_MONTHLY, billingCycle: 'LIFETIME' },
-        autoRenew: false,
-        expiresAt: null,
-      },
-    })
     renderPage()
     await screen.findByText('Pro Monthly')
     expect(screen.queryByRole('switch', { name: /auto-renew/i })).toBeNull()
+    expect(screen.queryByRole('checkbox', { name: /auto-renew/i })).toBeNull()
   })
 
-  it('opens the change-plan panel, schedules a change, and refreshes history', async () => {
+  it('labels the renewal date "Renews on" when auto-renew is on', async () => {
     stubAllOk()
+    renderPage()
+    expect(await screen.findByText(/^renews on$/i)).toBeInTheDocument()
+  })
+
+  it('labels the renewal date "Ends on" when auto-renew is off', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, autoRenew: false } })
+    renderPage()
+    expect(await screen.findByText(/^ends on$/i)).toBeInTheDocument()
+  })
+
+  it('hides Change plan when changeable=false', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, changeable: false } })
+    renderPage()
+    await screen.findByText('Pro Monthly')
+    expect(
+      screen.queryByRole('button', { name: /^change plan$/i }),
+    ).toBeNull()
+    expect(
+      screen.getByRole('button', { name: /^cancel subscription$/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('hides Cancel subscription when cancellable=false', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, cancellable: false } })
+    renderPage()
+    await screen.findByText('Pro Monthly')
+    expect(
+      screen.queryByRole('button', { name: /^cancel subscription$/i }),
+    ).toBeNull()
+    expect(
+      screen.getByRole('button', { name: /^change plan$/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('shows an explainer when both changeable and cancellable are false', async () => {
+    stubAllOk({
+      sub: { ...ACTIVE_SUB, changeable: false, cancellable: false },
+    })
+    renderPage()
+    await screen.findByText('Pro Monthly')
+    expect(
+      screen.getByText(/can't be changed or cancelled/i),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^change plan$/i }),
+    ).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /^cancel subscription$/i }),
+    ).toBeNull()
+  })
+
+  it('opens the change-plan modal, schedules a change, and refreshes the subscription', async () => {
+    vi.spyOn(subscriptionsApi, 'getCurrentSubscription')
+      .mockResolvedValueOnce(ACTIVE_SUB)
+      .mockResolvedValueOnce({ ...ACTIVE_SUB, pendingChange: PENDING_CHANGE })
+    vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({ settings: [] })
     vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue([
       PRO_MONTHLY,
       PRO_YEARLY,
@@ -206,26 +224,18 @@ describe('Settings', () => {
     const changeSpy = vi
       .spyOn(subscriptionsApi, 'requestProductChange')
       .mockResolvedValue({ id: 'c1', status: 'PENDING' })
-    // Second history fetch (after scheduling) returns the new event.
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory')
-      .mockResolvedValueOnce(HISTORY_SUBSCRIBED_ONLY)
-      .mockResolvedValueOnce([
-        {
-          id: 'e2',
-          subscriptionId: 's1',
-          eventType: 'CHANGE_SCHEDULED',
-          metadata: 'Pro Monthly → Pro Yearly',
-          createdAt: '2026-05-02T00:00:00Z',
-        },
-        ...HISTORY_SUBSCRIBED_ONLY,
-      ])
 
     renderPage()
     await screen.findByText('Pro Monthly')
     await userEvent.click(
-      screen.getByRole('button', { name: /change plan/i }),
+      screen.getByRole('button', { name: /^change plan$/i }),
     )
-    // Yearly is the only "other" product → preselected.
+    // Plan picker opens as a portaled dialog (a11y: role=dialog,
+    // aria-modal). The page itself doesn't reflow.
+    const dialog = await screen.findByRole('dialog', {
+      name: /change your plan/i,
+    })
+    expect(dialog).toHaveAttribute('aria-modal', 'true')
     expect(
       await screen.findByRole('radio', { name: /pro yearly/i }),
     ).toBeChecked()
@@ -238,96 +248,119 @@ describe('Settings', () => {
         effectiveType: 'NEXT_BILLING_CYCLE',
       }),
     )
+    // After scheduling, the modal closes and the top-of-page banner shows
+    // the pending change. The Change-plan button is relabeled.
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
     expect(
-      await screen.findByRole('heading', {
-        level: 2,
-        name: /plan change scheduled/i,
-      }),
+      await screen.findByText(/plan change scheduled/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/switching to/i)).toBeInTheDocument()
+    expect(
+      screen.getByRole('button', { name: /^change scheduled plan$/i }),
     ).toBeInTheDocument()
   })
 
-  it('detects an existing pending scheduled change from history', async () => {
-    stubAllOk({
-      history: [
-        {
-          id: 'e2',
-          subscriptionId: 's1',
-          eventType: 'CHANGE_SCHEDULED',
-          metadata: 'Pro Monthly → Pro Yearly',
-          createdAt: '2026-05-02T00:00:00Z',
-        },
-        ...HISTORY_SUBSCRIBED_ONLY,
-      ],
-    })
+  it('closes the change-plan modal when the close button is clicked', async () => {
+    stubAllOk()
+    vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue([
+      PRO_MONTHLY,
+      PRO_YEARLY,
+    ])
     renderPage()
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^change plan$/i }),
+    )
     expect(
-      await screen.findByRole('heading', {
-        level: 2,
-        name: /plan change scheduled/i,
-      }),
+      await screen.findByRole('dialog', { name: /change your plan/i }),
     ).toBeInTheDocument()
+    await userEvent.click(screen.getByRole('button', { name: /^close$/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('does not show the pending banner when CHANGE_CANCELLED supersedes the schedule', async () => {
-    stubAllOk({
-      history: [
-        {
-          id: 'e3',
-          subscriptionId: 's1',
-          eventType: 'CHANGE_CANCELLED',
-          createdAt: '2026-05-03T00:00:00Z',
-        },
-        {
-          id: 'e2',
-          subscriptionId: 's1',
-          eventType: 'CHANGE_SCHEDULED',
-          createdAt: '2026-05-02T00:00:00Z',
-        },
-        ...HISTORY_SUBSCRIBED_ONLY,
-      ],
-    })
+  it('renders the pending-change banner from sub.pendingChange (no inline buttons)', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, pendingChange: PENDING_CHANGE } })
     renderPage()
-    await screen.findByText('Pro Monthly')
     expect(
-      screen.queryByRole('heading', { name: /plan change scheduled/i }),
+      await screen.findByText(/plan change scheduled/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/switching to/i)).toBeInTheDocument()
+    expect(screen.getByText(/pro yearly/i)).toBeInTheDocument()
+    // The banner itself is intentionally action-less; cancel-scheduled
+    // lives inside the Change-plan tile.
+    expect(
+      screen.queryByRole('button', { name: /cancel scheduled change/i }),
     ).toBeNull()
   })
 
-  it('cancels the scheduled change when the user clicks the button', async () => {
-    const pendingHistory = [
-      {
-        id: 'e2',
-        subscriptionId: 's1',
-        eventType: 'CHANGE_SCHEDULED',
-        createdAt: '2026-05-02T00:00:00Z',
-      },
-      ...HISTORY_SUBSCRIBED_ONLY,
-    ]
-    vi.spyOn(subscriptionsApi, 'getCurrentSubscription').mockResolvedValue(
-      ACTIVE_SUB,
-    )
+  it('hides the pending banner when sub.pendingChange is null', async () => {
+    stubAllOk()
+    renderPage()
+    await screen.findByText('Pro Monthly')
+    expect(screen.queryByText(/plan change scheduled/i)).toBeNull()
+    expect(screen.queryByText(/switching to/i)).toBeNull()
+  })
+
+  it('keeps Cancel subscription enabled even while a pendingChange exists', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, pendingChange: PENDING_CHANGE } })
+    renderPage()
+    await screen.findByText(/plan change scheduled/i)
+    const cancelBtn = screen.getByRole('button', {
+      name: /^cancel subscription$/i,
+    })
+    expect(cancelBtn).toBeEnabled()
+    expect(
+      screen.queryByText(/cancel the scheduled plan change first/i),
+    ).toBeNull()
+  })
+
+  it('relabels Change plan to "Change scheduled plan" when one is queued', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, pendingChange: PENDING_CHANGE } })
+    renderPage()
+    await screen.findByText(/plan change scheduled/i)
+    expect(
+      screen.getByRole('button', { name: /^change scheduled plan$/i }),
+    ).toBeInTheDocument()
+    expect(
+      screen.queryByRole('button', { name: /^change plan$/i }),
+    ).toBeNull()
+  })
+
+  it('cancels the scheduled change from inside the Change scheduled plan tile', async () => {
+    vi.spyOn(subscriptionsApi, 'getCurrentSubscription')
+      .mockResolvedValueOnce({ ...ACTIVE_SUB, pendingChange: PENDING_CHANGE })
+      .mockResolvedValueOnce({ ...ACTIVE_SUB, pendingChange: null })
     vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({ settings: [] })
-    // First fetch (mount) → pending; second fetch (after cancel) → cancelled.
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory')
-      .mockResolvedValueOnce(pendingHistory)
-      .mockResolvedValueOnce([
-        {
-          id: 'e3',
-          subscriptionId: 's1',
-          eventType: 'CHANGE_CANCELLED',
-          createdAt: '2026-05-03T00:00:00Z',
-        },
-        ...pendingHistory,
-      ])
+    vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue([
+      PRO_MONTHLY,
+      PRO_YEARLY,
+    ])
     const cancelSpy = vi
       .spyOn(subscriptionsApi, 'cancelScheduledChange')
       .mockResolvedValue()
     renderPage()
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^change scheduled plan$/i }),
+    )
     const cancelBtn = await screen.findByRole('button', {
-      name: /cancel scheduled change/i,
+      name: /^cancel scheduled change$/i,
     })
     await userEvent.click(cancelBtn)
     await waitFor(() => expect(cancelSpy).toHaveBeenCalledWith('tok'))
+    await waitFor(() =>
+      expect(screen.queryByText(/plan change scheduled/i)).toBeNull(),
+    )
+  })
+
+  it('warns inside the cancel-confirm panel that a scheduled change will also be cancelled', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, pendingChange: PENDING_CHANGE } })
+    renderPage()
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^cancel subscription$/i }),
+    )
+    expect(
+      screen.getByText(/scheduled change to/i),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/will also be cancelled/i)).toBeInTheDocument()
   })
 
   it('cancels the subscription via a two-step confirm and re-renders the cancelled state', async () => {
@@ -341,9 +374,6 @@ describe('Settings', () => {
     vi.spyOn(subscriptionsApi, 'getCurrentSubscription')
       .mockResolvedValueOnce(ACTIVE_SUB)
       .mockResolvedValueOnce(cancelledSub)
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue(
-      HISTORY_SUBSCRIBED_ONLY,
-    )
     vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({ settings: [] })
     const cancelSpy = vi
       .spyOn(subscriptionsApi, 'cancelSubscription')
@@ -372,7 +402,6 @@ describe('Settings', () => {
     vi.spyOn(subscriptionsApi, 'getCurrentSubscription')
       .mockResolvedValueOnce(ACTIVE_SUB)
       .mockResolvedValueOnce(null)
-    vi.spyOn(subscriptionsApi, 'getSubscriptionHistory').mockResolvedValue([])
     vi.spyOn(settingsApi, 'getSettings').mockResolvedValue({ settings: [] })
     vi.spyOn(subscriptionsApi, 'cancelSubscription').mockResolvedValue()
     renderPage()
@@ -386,25 +415,6 @@ describe('Settings', () => {
       await screen.findByRole('heading', { level: 1, name: /choose plan/i }),
     ).toBeInTheDocument()
   })
-
-  it('renders activity events from the history endpoint', async () => {
-    stubAllOk({
-      history: [
-        {
-          id: 'e2',
-          subscriptionId: 's1',
-          eventType: 'AUTO_RENEWED',
-          createdAt: '2026-04-15T12:00:00Z',
-        },
-        ...HISTORY_SUBSCRIBED_ONLY,
-      ],
-    })
-    renderPage()
-    await screen.findByText('Pro Monthly')
-    expect(screen.getByText(/auto-renewed/i)).toBeInTheDocument()
-    expect(screen.getByText(/^subscribed$/i)).toBeInTheDocument()
-  })
 })
-
 
 

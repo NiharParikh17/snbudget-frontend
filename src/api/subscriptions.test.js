@@ -7,7 +7,6 @@ import {
   updateAutoRenew,
   requestProductChange,
   cancelScheduledChange,
-  getSubscriptionHistory,
 } from './subscriptions.js'
 
 function jsonResponse(body, init = {}) {
@@ -120,18 +119,6 @@ describe('subscriptions API', () => {
     const [url, init] = globalThis.fetch.mock.calls[0]
     expect(url).toMatch(/\/api\/subscriptions\/me\/change$/)
     expect(init.method).toBe('DELETE')
-    expect(init.headers.Authorization).toBe('Bearer tok')
-  })
-
-  it('getSubscriptionHistory() GETs /api/subscriptions/me/history', async () => {
-    globalThis.fetch.mockResolvedValueOnce(
-      jsonResponse([{ id: 'e1', eventType: 'SUBSCRIBED' }]),
-    )
-    const events = await getSubscriptionHistory('tok')
-    expect(events).toEqual([{ id: 'e1', eventType: 'SUBSCRIBED' }])
-    const [url, init] = globalThis.fetch.mock.calls[0]
-    expect(url).toMatch(/\/api\/subscriptions\/me\/history$/)
-    expect(init.method).toBe('GET')
     expect(init.headers.Authorization).toBe('Bearer tok')
   })
 })

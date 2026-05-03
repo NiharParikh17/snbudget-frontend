@@ -25,7 +25,7 @@
 ```
 src/
 ├── assets/            # Static assets imported by components
-├── components/        # Reusable UI: Button, Logo, Header, Footer, Layout, ...
+├── components/        # Reusable UI: Button, Logo, Modal, Header, Footer, Layout, ...
 ├── context/           # React contexts: ThemeContext (theme provider + useTheme hook)
 ├── pages/             # Route-level components: Home, About, ...
 ├── test/setup.js      # Global test setup (jest-dom matchers, matchMedia stub, cleanup)
@@ -54,6 +54,12 @@ src/
 - `components/Logo.jsx` is the **only** place the brand mark (SVG bolt +
   gradient wordmark) is defined. Use it in any surface that needs the brand
   identity.
+- `components/Modal.jsx` is the **only** dialog primitive. It portals into
+  `document.body`, locks body scroll while open, dismisses on ESC + backdrop
+  click (each opt-out-able), wires the heading via `aria-labelledby`, and
+  moves focus into the dialog on open. Use it for any in-app dialog (the
+  Settings page's *Change plan* picker is the first consumer) instead of
+  expanding an in-page tile that shoves the layout around.
 
 ## Theme system
 
@@ -208,18 +214,21 @@ src/
   also wraps the full set of user-callable endpoints: `cancelSubscription`
   (`DELETE /me`), `updateAutoRenew` (`PATCH /me/auto-renew`),
   `requestProductChange` (`POST /me/change`, frontend currently always
-  sends `effectiveType: 'NEXT_BILLING_CYCLE'`), `cancelScheduledChange`
-  (`DELETE /me/change`), and `getSubscriptionHistory` (`GET /me/history`).
-  The `pages/Settings.jsx` page (guarded by `RequireAuth` +
+  sends `effectiveType: 'NEXT_BILLING_CYCLE'`), and
+  `cancelScheduledChange` (`DELETE /me/change`). The backend's
+  `UserSubscriptionResponse` now embeds the active subscription **and**
+  its `pendingChange` (or `null`) in a single payload, plus
+  `changeable` / `cancellable` capability flags — the frontend reads
+  those directly and no longer hits `/me/history`. The
+  `pages/Settings.jsx` page (guarded by `RequireAuth` +
   `RequireSubscription`, route `/settings`) is the single hub where users
-  view their current plan, toggle auto-renew (optimistic with rollback on
-  error), change plan at the next billing cycle, cancel, and review
-  recent subscription activity. Pending product changes are **inferred
-  from `/me/history`** (latest `CHANGE_SCHEDULED` not followed by
-  `CHANGE_CANCELLED` / `CHANGE_APPLIED`) until the backend exposes a
-  dedicated `GET /me/change` (tracked under `[Unreleased]` in the
-  changelog). Cancellation re-runs `/me`: if the backend kept the record
-  visible (`CANCELLED` until `expiresAt`) the page re-renders with a
+  view their current plan + any pending scheduled change, toggle
+  auto-renew (optimistic with rollback on error), change plan at the
+  next billing cycle, and cancel. The Change-plan and Cancel-subscription
+  buttons are hidden when the corresponding capability flag is `false`;
+  if both are `false` a short explainer replaces the buttons.
+  Cancellation re-runs `/me`: if the backend kept the record visible
+  (`CANCELLED` until `expiresAt`) the page re-renders with a
   cancelled-state banner; if it dropped, the user is routed to
   `/choose-plan`.
 - **User Settings API** (`/api/settings/*`) is wrapped in

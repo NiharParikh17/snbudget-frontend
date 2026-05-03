@@ -46,6 +46,9 @@ export function listProducts(accessToken) {
  *   expiresAt: string|null,
  *   cancelledAt: string|null,
  *   createdAt: string,
+ *   changeable: boolean,
+ *   cancellable: boolean,
+ *   pendingChange: object|null,
  * }>}
  */
 export function getCurrentSubscription(accessToken) {
@@ -132,24 +135,3 @@ export function cancelScheduledChange(accessToken) {
   return request('DELETE', `${BASE}/me/change`, { accessToken })
 }
 
-/**
- * Get the caller's subscription event history, ordered most-recent first.
- *
- * No dedicated `GET /me/change` endpoint exists yet, so the Settings page
- * also derives "is there a pending product change?" from this history
- * (latest `CHANGE_SCHEDULED` not followed by `CHANGE_CANCELLED` /
- * `CHANGE_APPLIED`). Remove that inference once the backend exposes a
- * direct read.
- *
- * @param {string} accessToken
- * @returns {Promise<Array<{
- *   id: string,
- *   subscriptionId: string,
- *   eventType: 'SUBSCRIBED'|'AUTO_RENEWED'|'CANCELLED'|'EXPIRED'|'AMENDED'|'CHANGE_SCHEDULED'|'CHANGE_CANCELLED',
- *   metadata?: string,
- *   createdAt: string,
- * }>>}
- */
-export function getSubscriptionHistory(accessToken) {
-  return request('GET', `${BASE}/me/history`, { accessToken })
-}

@@ -6,6 +6,158 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **`Modal` component** (`src/components/Modal.jsx`) — accessible
+  dialog primitive shared across the app. Portal-mounted on
+  `document.body`, locks body scroll while open, supports ESC and
+  backdrop dismissal (each independently opt-out-able), wires the
+  heading to the dialog via `aria-labelledby`, and moves focus inside
+  on open. Sizes: `sm | md | lg | xl`. Tests: 7 cases in
+  `Modal.test.jsx` (closed = nothing rendered, open shape, close-button
+  / ESC / backdrop dismissal, ESC opt-out, body scroll lock + restore).
+
+### Changed
+- **Settings — Change plan is now a modal**, not an in-page tile.
+  Previously, opening *Change plan* expanded a `Card` below the
+  Subscription card and pushed everything down, which felt jumpy.
+  Now it opens a portal-mounted `Modal` ("Change your plan" / "Change
+  scheduled plan") so the page stays still.
+- **Plan picker grid mirrors `/choose-plan`** — column-style
+  product cards (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with
+  big price, billing-cycle caption, and a Selected/Select pill — so
+  users see the same shape they used at signup. The cancel-scheduled
+  -change action stays inside this modal (the single home for
+  scheduled-plan ops).
+
+### Tests
+- `Settings.test.jsx` — the existing change-plan happy-path test now
+  asserts a `role="dialog"` with `aria-modal="true"` opens, and a new
+  case verifies the modal closes when the close (×) button is clicked.
+  Net Settings test count: 21 (was 20). Total suite: **154 tests**
+  (was 146).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Settings — subscription card UX overhaul** based on user feedback
+  that "two cancel buttons" (one inline + one in the action row, even
+  when one was disabled) was confusing. The page now follows three
+  clearer rules:
+  1. **Pending plan change is a top-of-page banner** (`role="status"`,
+     violet card above the Subscription card) reading e.g. *"Plan
+     change scheduled — Switching to **Pro Yearly** ($99 / year) at
+     your next billing cycle."* The banner is intentionally
+     **action-less**: it points users at *Change scheduled plan*
+     below.
+  2. **The "Change scheduled plan" tile is now the single home for
+     every scheduled-plan operation.** It hosts both *Schedule change*
+     (swap target plan) **and** *Cancel scheduled change*. The inline
+     pending row inside the Subscription card is gone, eliminating the
+     duplicate Cancel surface.
+  3. **Cancel subscription is always allowed** when `cancellable=true`
+     — even with a `pendingChange` queued. The cancel-confirm panel
+     adds an amber line: *"Your scheduled change to **X** will also be
+     cancelled."* This reverses the prior "must cancel scheduled
+     change first" rule, matching the user's product call that
+     cancelling an active subscription cancels its future plans too.
+- **Auto-renew is no longer a checkbox / switch.** Industry standard
+  for consumer subscriptions (Apple, Netflix, Spotify) is to express
+  "stop renewing" through a single Cancel action, so the dedicated
+  Auto-renew tile is removed. The renewal date in the Subscription
+  card is now labelled **"Renews on"** (auto-renew on) or **"Ends
+  on"** (auto-renew off) so the renewal posture is still visible at a
+  glance — but the only off-switch is *Cancel subscription*.
+
+### Removed
+- Auto-renew toggle tile (`role="switch"` checkbox) on `/settings`.
+  The `updateAutoRenew` API wrapper stays in `src/api/subscriptions.js`
+  for future use but is no longer imported by the Settings page.
+- Inline "Cancel scheduled change" button inside the Subscription
+  card's pending-change row (the row itself is gone — superseded by
+  the top banner + the Change scheduled plan tile).
+- "To cancel your subscription, cancel the scheduled plan change
+  first." hint and the disabled-cancel state that went with it.
+
+### Tests
+- `Settings.test.jsx` — replaced the auto-renew toggle, blocked-cancel,
+  and inline pending-row tests with new ones covering the new UX:
+  no auto-renew control rendered, "Renews on" / "Ends on" labels,
+  top-of-page pending banner with no inline buttons, Cancel
+  subscription stays enabled with a pendingChange, the Change
+  scheduled plan tile hosts the cancel-scheduled-change button, and
+  the cancel-confirm panel warns that the scheduled change is
+  dropped. Net Settings test count: 20 (was 18). Total suite:
+  **146 tests** (was 144).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Pending plan change is now an inline row in the Subscription card**,
+  not a separate "Plan change scheduled" card. Reads e.g. *"Switching to
+  **Pro Yearly** ($99 / year) at your next billing cycle."* with a
+  *"Cancel scheduled change"* ghost button right next to the rest of
+  the subscription details.
+- **Cancellation rule** — while a `pendingChange` exists, the **Cancel
+  subscription** button is disabled and a hint reads *"To cancel your
+  subscription, cancel the scheduled plan change first."* This avoids a
+  confusing 4xx from the backend and matches the new product rule.
+- **Change plan** — the action's label flips to *"Change scheduled
+  plan"* when one is already queued, and the in-page panel explains
+  that submitting will replace the existing scheduled change. The
+  `requestProductChange` endpoint is unchanged — the backend transparently
+  cancels any prior pending change and enrolls the new target.
+
+### Removed
+- The standalone *Plan change scheduled* card on `/settings`.
+
+### Tests
+- `Settings.test.jsx` — replaced the heading-based pending-change
+  assertions with text/button-based ones; added 2 new cases:
+  Cancel-subscription disabled when a pendingChange exists (with the
+  visible hint), and Change-plan label flips to "Change scheduled plan".
+  Net Settings test count: 18 (was 16).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Pending scheduled change now read directly from `/me`** — the
+  Subscription Management API now embeds the active subscription's
+  `pendingChange` (or `null`) in `UserSubscriptionResponse`, so the
+  Settings page reads it inline and no longer infers it from history.
+  Cancelling or scheduling a change now refreshes the subscription so
+  the UI updates immediately. Resolves the prior TODO calling for
+  `GET /me/change`.
+
+### Removed
+- **`getSubscriptionHistory` wrapper and `/me/history` call** — the
+  Activity card on `/settings` is gone; subscription history is no
+  longer surfaced in the UI. `src/api/subscriptions.js` no longer
+  exports `getSubscriptionHistory` and `subscriptions.test.js` drops
+  the matching case.
+- **`SubscriptionEvent` domain entity** — no longer consumed by the
+  frontend. `documents/domain-model.md` updated.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Added
+- **Per-subscription `changeable` / `cancellable` flags** — the
+  Subscription Management API now returns two booleans on
+  `UserSubscriptionResponse`. The Settings page hides the **Change plan**
+  button when `changeable === false` and the **Cancel subscription**
+  button when `cancellable === false`. If both are false, a short
+  "This plan can't be changed or cancelled." note is rendered in place
+  of the buttons. JSDoc on `getCurrentSubscription` updated.
+  Tests: 3 new cases in `Settings.test.jsx` (Change-plan hidden,
+  Cancel-subscription hidden, both-false explainer).
+
+### Added
 - **Settings page (`/settings`)** — new authenticated route (guarded by
   `RequireAuth` + `RequireSubscription`) that is the single subscription-
   management hub. Surfaces:

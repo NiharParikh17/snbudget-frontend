@@ -133,9 +133,8 @@ function About() {
             and are enrolled immediately on the backend — no payment is
             collected yet (checkout will be added before billing goes
             live). A <strong>Settings page</strong> lets you review your
-            plan, toggle auto-renew, change to a different plan at the
-            next billing cycle, cancel your subscription, and see your
-            recent subscription activity. The budgeting and
+            plan, change to a different plan at the next billing cycle,
+            and cancel your subscription. The budgeting and
             splitting features are next; see the{' '}
             <Link
               to="/"
