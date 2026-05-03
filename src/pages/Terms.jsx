@@ -12,7 +12,7 @@ import Button from '../components/Button.jsx'
  *   matching section below. See `.github/copilot-instructions.md` (step 3b).
  */
 
-const lastUpdated = 'May 2026'
+const lastUpdated = 'May 2026 (rev. 2)'
 
 function Terms() {
   return (
@@ -56,6 +56,14 @@ function Terms() {
             pricing, billing, refund, and renewal terms will be added
             here before checkout goes live, and your continued use after
             that update will constitute acceptance of those terms.
+          </p>
+          <p className="mt-3 text-slate-600 dark:text-slate-300">
+            You can manage your subscription from the in-app{' '}
+            <strong>Settings</strong> page: toggle auto-renew, change to a
+            different plan at your next billing cycle, or cancel. If you
+            cancel a recurring plan, you keep access until the end of the
+            current billing period; your data is retained until you delete
+            your account.
           </p>
         </section>
 

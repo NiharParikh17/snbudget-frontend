@@ -11,6 +11,7 @@ import SignUp from './pages/SignUp.jsx'
 import Welcome from './pages/Welcome.jsx'
 import EmailVerified from './pages/EmailVerified.jsx'
 import ChoosePlan from './pages/ChoosePlan.jsx'
+import Settings from './pages/Settings.jsx'
 
 function App() {
   return (
@@ -37,6 +38,16 @@ function App() {
             <RequireAuth>
               <RequireSubscription>
                 <Welcome />
+              </RequireSubscription>
+            </RequireAuth>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <RequireAuth>
+              <RequireSubscription>
+                <Settings />
               </RequireSubscription>
             </RequireAuth>
           }

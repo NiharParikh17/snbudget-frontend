@@ -112,6 +112,9 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
     `RequireSubscription`)
   - `/choose-plan` → `pages/ChoosePlan.jsx` (guarded by `RequireAuth`;
     redirects active subscribers to `/welcome`)
+  - `/settings` → `pages/Settings.jsx` (guarded by `RequireAuth` **and**
+    `RequireSubscription`; subscription management hub — see "Backend
+    integration" below)
   - `*` → redirect to `/` (until a dedicated 404 page exists)
 - Use `<Link>` / `<NavLink>` for in-app navigation; never bare `<a href>` for
   internal routes.
@@ -201,6 +204,34 @@ src/
   re-runs the `/me` lookup via `refreshSubscription()` so the gate flips
   to `'active'`, and routes to `/welcome`. There is no payment step yet —
   the backend simply records the subscription.
+- **Subscription management on `/settings`** — `src/api/subscriptions.js`
+  also wraps the full set of user-callable endpoints: `cancelSubscription`
+  (`DELETE /me`), `updateAutoRenew` (`PATCH /me/auto-renew`),
+  `requestProductChange` (`POST /me/change`, frontend currently always
+  sends `effectiveType: 'NEXT_BILLING_CYCLE'`), `cancelScheduledChange`
+  (`DELETE /me/change`), and `getSubscriptionHistory` (`GET /me/history`).
+  The `pages/Settings.jsx` page (guarded by `RequireAuth` +
+  `RequireSubscription`, route `/settings`) is the single hub where users
+  view their current plan, toggle auto-renew (optimistic with rollback on
+  error), change plan at the next billing cycle, cancel, and review
+  recent subscription activity. Pending product changes are **inferred
+  from `/me/history`** (latest `CHANGE_SCHEDULED` not followed by
+  `CHANGE_CANCELLED` / `CHANGE_APPLIED`) until the backend exposes a
+  dedicated `GET /me/change` (tracked under `[Unreleased]` in the
+  changelog). Cancellation re-runs `/me`: if the backend kept the record
+  visible (`CANCELLED` until `expiresAt`) the page re-renders with a
+  cancelled-state banner; if it dropped, the user is routed to
+  `/choose-plan`.
+- **User Settings API** (`/api/settings/*`) is wrapped in
+  `src/api/settings.js` (`getSettings`, `updateSettings`). The backend is
+  the source of truth for which settings exist; the frontend keeps its
+  own `KNOWN_SETTING_KEYS` allow-list and silently drops anything not in
+  it via `pickKnown()` so the backend can roll out new settings before UI
+  for them ships. The allow-list is currently empty — the Preferences
+  card on `/settings` shows an empty state and just exercises the
+  `getSettings` call (with a retryable inline error on failure). Add a
+  key to `KNOWN_SETTING_KEYS` and render it in `pages/Settings.jsx` to
+  expose a new preference.
 - The gateway MUST send `Access-Control-Allow-Credentials: true` with an
   explicit `Access-Control-Allow-Origin` (not `*`) for
   `credentials: 'include'` to work cross-origin in local dev.

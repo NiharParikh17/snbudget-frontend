@@ -47,6 +47,11 @@
       `GET /api/subscriptions/products`. Selection + checkout
       (`POST /api/subscriptions`) are not yet wired — the Continue
       button is disabled with a "Coming soon" hint.
+- [x] Subscription management UI (`/settings`) — view current plan,
+      toggle auto-renew, change plan at next billing cycle, cancel
+      subscription, view event history. User Settings API
+      (`/api/settings/me`) is wired but the frontend allow-list of
+      renderable keys is currently empty.
 - [ ] Replace local persistence with API
 - [ ] Real multi-user splits
 

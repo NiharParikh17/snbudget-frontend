@@ -33,8 +33,8 @@ function Header() {
         <nav aria-label="Account" className="flex items-center gap-2">
           {status === 'authenticated' ? (
             <>
-              <Button as={Link} to="/welcome" variant="ghost">
-                My account
+              <Button as={Link} to="/settings" variant="ghost">
+                Settings
               </Button>
               <Button
                 type="button"

@@ -1,5 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { listProducts, getCurrentSubscription, subscribe } from './subscriptions.js'
+import {
+  listProducts,
+  getCurrentSubscription,
+  subscribe,
+  cancelSubscription,
+  updateAutoRenew,
+  requestProductChange,
+  cancelScheduledChange,
+  getSubscriptionHistory,
+} from './subscriptions.js'
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -64,5 +73,65 @@ describe('subscriptions API', () => {
       autoRenew: false,
     })
   })
-})
 
+  it('cancelSubscription() DELETEs /api/subscriptions/me with the bearer token', async () => {
+    globalThis.fetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    await cancelSubscription('tok')
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/me$/)
+    expect(init.method).toBe('DELETE')
+    expect(init.headers.Authorization).toBe('Bearer tok')
+  })
+
+  it('updateAutoRenew() PATCHes /api/subscriptions/me/auto-renew with the new flag', async () => {
+    globalThis.fetch.mockResolvedValueOnce(
+      jsonResponse({ id: 's1', autoRenew: false }),
+    )
+    const result = await updateAutoRenew('tok', { autoRenew: false })
+    expect(result).toMatchObject({ autoRenew: false })
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/me\/auto-renew$/)
+    expect(init.method).toBe('PATCH')
+    expect(init.headers.Authorization).toBe('Bearer tok')
+    expect(JSON.parse(init.body)).toEqual({ autoRenew: false })
+  })
+
+  it('requestProductChange() POSTs /api/subscriptions/me/change with the payload', async () => {
+    globalThis.fetch.mockResolvedValueOnce(
+      jsonResponse({ id: 'c1', status: 'PENDING' }),
+    )
+    const result = await requestProductChange('tok', {
+      targetProductId: 'p-year',
+      effectiveType: 'NEXT_BILLING_CYCLE',
+    })
+    expect(result).toMatchObject({ id: 'c1', status: 'PENDING' })
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/me\/change$/)
+    expect(init.method).toBe('POST')
+    expect(JSON.parse(init.body)).toEqual({
+      targetProductId: 'p-year',
+      effectiveType: 'NEXT_BILLING_CYCLE',
+    })
+  })
+
+  it('cancelScheduledChange() DELETEs /api/subscriptions/me/change', async () => {
+    globalThis.fetch.mockResolvedValueOnce(new Response(null, { status: 200 }))
+    await cancelScheduledChange('tok')
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/me\/change$/)
+    expect(init.method).toBe('DELETE')
+    expect(init.headers.Authorization).toBe('Bearer tok')
+  })
+
+  it('getSubscriptionHistory() GETs /api/subscriptions/me/history', async () => {
+    globalThis.fetch.mockResolvedValueOnce(
+      jsonResponse([{ id: 'e1', eventType: 'SUBSCRIBED' }]),
+    )
+    const events = await getSubscriptionHistory('tok')
+    expect(events).toEqual([{ id: 'e1', eventType: 'SUBSCRIBED' }])
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/me\/history$/)
+    expect(init.method).toBe('GET')
+    expect(init.headers.Authorization).toBe('Bearer tok')
+  })
+})

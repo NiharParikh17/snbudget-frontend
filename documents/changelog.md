@@ -6,6 +6,100 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Settings page (`/settings`)** — new authenticated route (guarded by
+  `RequireAuth` + `RequireSubscription`) that is the single subscription-
+  management hub. Surfaces:
+  - **Current plan** card with product details, status badge, started /
+    renews-or-ends / cancelled dates, and an **Auto-renew** toggle
+    (optimistic update with rollback on error; hidden for `LIFETIME`
+    plans, which the backend forces to `false`).
+  - **Change plan** in-page panel that loads `GET /api/subscriptions/products`
+    on demand and submits `POST /api/subscriptions/me/change` with
+    `effectiveType: 'NEXT_BILLING_CYCLE'` only — no immediate / on-date
+    selectors yet (we'll add them when the product calls for it).
+  - **Pending scheduled change** banner with a **Cancel scheduled change**
+    action wired to `DELETE /api/subscriptions/me/change`. Pending state
+    is **inferred from `/me/history`** (latest `CHANGE_SCHEDULED` not
+    followed by `CHANGE_CANCELLED` / `CHANGE_APPLIED`) until the backend
+    exposes a dedicated `GET /me/change` (TODO below).
+  - **Cancel subscription** two-step inline confirm panel that explicitly
+    lists what the user loses (budgets, splits, balances) and the
+    access-end date from `expiresAt`. On confirm calls
+    `DELETE /api/subscriptions/me`, refreshes the auth context's
+    subscription status, and re-reads `/me`: if the backend kept the
+    record visible (`CANCELLED` until `expiresAt`) the page re-renders
+    with a cancelled-state banner; if `/me` now returns 204 the user is
+    routed to `/choose-plan`.
+  - **Activity** card listing the latest events from
+    `GET /api/subscriptions/me/history` (event type + relative timestamp
+    + optional metadata).
+  - **Preferences** card — empty state today; just exercises the User
+    Settings API call so unsupported keys are explicitly dropped.
+  Each card loads, errors, and retries independently so a flake in one
+  API doesn't take the whole page down.
+- **Five new wrappers in `src/api/subscriptions.js`** —
+  `cancelSubscription`, `updateAutoRenew`, `requestProductChange`,
+  `cancelScheduledChange`, `getSubscriptionHistory` (all routed via the
+  gateway under `/api/subscriptions/*`).
+- **`src/api/settings.js`** — `getSettings(accessToken)` /
+  `updateSettings(accessToken, partial)` against `/api/settings/me`,
+  plus a frontend `KNOWN_SETTING_KEYS` allow-list (currently empty) and
+  a `pickKnown(response)` helper that drops unknown keys. Forward-compat
+  policy: the backend can ship new settings before UI for them lands;
+  the frontend just ignores keys it doesn't yet render.
+- **Header navigation** — the authenticated nav link now points to
+  `/settings` ("Settings") instead of the placeholder `/welcome`
+  ("My account"); `/welcome` remains as the post-onboarding landing.
+- Tests:
+  - `subscriptions.test.js`: 5 new cases (one per new wrapper).
+  - `settings.test.js`: 4 cases (GET/PATCH paths, allow-list filtering
+    + tolerant input handling).
+  - `Settings.test.jsx`: 13 cases — parallel load, no-active-subscription
+    empty state, subscription-fetch retry, settings-fetch retry without
+    breaking the rest of the page, allow-list filtering, auto-renew
+    optimistic + rollback, hidden auto-renew for LIFETIME, change-plan
+    happy path with history refresh, pending-change inference from
+    history, supersession by `CHANGE_CANCELLED`, cancel-scheduled-change
+    flow, two-step cancel-subscription confirm + cancelled-state
+    rerender, navigate to `/choose-plan` if `/me` now 204s, and activity
+    rendering.
+  - `App.test.jsx`: new `/settings` redirects-when-anonymous case.
+
+### Changed
+- **About page** — "Where we are today" now mentions the Settings page
+  (manage / change / cancel plan, view activity).
+- **Terms page** — added a paragraph stating that subscriptions can be
+  managed (auto-renew toggle, change at next billing cycle, cancel) from
+  the in-app Settings page, and that cancellation keeps access until the
+  end of the current billing period. "Last updated" bumped to
+  "May 2026 (rev. 2)".
+- **Header** — authenticated nav swaps `/welcome` ("My account") for
+  `/settings` ("Settings"); `/welcome` stays as the post-onboarding
+  landing page until a real dashboard exists.
+
+### TODO (under [Unreleased])
+- **`GET /api/subscriptions/me/change`** — the frontend currently
+  *infers* the pending scheduled change from `/me/history`. Once the
+  backend ships a direct read endpoint, replace
+  `findPendingScheduledChange(history)` in `pages/Settings.jsx` with a
+  dedicated fetch and remove the inference from
+  `documents/architecture.md` / `domain-model.md`.
+- **Effective-type selectors on Change plan** — we always send
+  `NEXT_BILLING_CYCLE`. Expose `IMMEDIATE` / `ON_DATE` once product
+  decides whether mid-cycle changes (with proration) are in scope.
+- **Settings UI** — `KNOWN_SETTING_KEYS` is empty today. Add the first
+  preference (likely `THEME`) and wire a control in the Preferences card
+  to PATCH it.
+
+### Security
+- No new runtime dependencies — the new code uses only native `fetch`.
+  `npm audit` to be re-verified after this change is applied.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Added
 - **Subscription enrollment from `/choose-plan`** — the **Continue**
   button is now wired up. Clicking it calls
   `POST /api/subscriptions` with `{ productId, autoRenew: true }`

@@ -31,6 +31,56 @@ subscription. `GET /api/subscriptions/me` returns `204 No Content` when
 the user has no active subscription, in which case the user is sent to
 `/choose-plan`.
 
+Cancellation transitions the subscription to `CANCELLED` but the user
+typically retains access until `expiresAt`; the `/settings` page surfaces
+this state with a "you'll keep access until …" banner. If the backend
+instead drops the record (so `/me` returns 204), the user is routed to
+`/choose-plan`.
+
+### ScheduledProductChange
+
+A queued plan change against a `UserSubscription`. There is no dedicated
+`GET` endpoint yet, so the frontend infers the latest pending change from
+`/api/subscriptions/me/history` (latest `CHANGE_SCHEDULED` not followed
+by `CHANGE_CANCELLED` / `CHANGE_APPLIED`).
+
+- `id`, `targetProduct` (`SubscriptionProduct`)
+- `effectiveType` — `IMMEDIATE | ON_DATE | NEXT_BILLING_CYCLE | NEXT_BILLING_CYCLE_AFTER_DATE`
+  (frontend currently only sends `NEXT_BILLING_CYCLE`)
+- `effectiveDate` (required for `ON_DATE` / `NEXT_BILLING_CYCLE_AFTER_DATE`)
+- `status` — `PENDING | APPLIED | CANCELLED`
+- `createdAt`
+
+### SubscriptionEvent
+
+A single entry in the subscription lifecycle log returned by
+`/api/subscriptions/me/history`. Used to render the "Activity" section
+on `/settings` and to infer pending plan changes (see above).
+
+- `id`, `subscriptionId`
+- `eventType` — `SUBSCRIBED | AUTO_RENEWED | CANCELLED | EXPIRED | AMENDED | CHANGE_SCHEDULED | CHANGE_CANCELLED | CHANGE_APPLIED`
+- `metadata` (optional free-text context)
+- `createdAt`
+
+### UserSetting
+
+A single key/value preference for a `User`. Owned by the user-settings
+service.
+
+- `key` — matches a backend `SettingKey` enum constant (e.g. `THEME`,
+  `DEFAULT_CURRENCY`, `BUDGET_ALERT_THRESHOLD_PERCENTAGE`,
+  `NOTIFICATIONS_EMAIL_ENABLED`)
+- `value` — current string value (falls back to `defaultValue` if unset)
+- `defaultValue` — declared default for resets
+- `valueType` — `BOOLEAN | INTEGER | DECIMAL | STRING | ENUM`
+- `allowedValues` — non-empty for `BOOLEAN` and `ENUM`; empty for the
+  free-form types
+
+The backend always returns every known key; the frontend keeps its own
+allow-list (`KNOWN_SETTING_KEYS` in `src/api/settings.js`, currently
+empty) and silently ignores keys it doesn't yet render so the backend can
+roll out new settings before UI for them ships.
+
 ### User
 
 - `id`
