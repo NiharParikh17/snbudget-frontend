@@ -52,3 +52,23 @@ export function getCurrentSubscription(accessToken) {
   return request('GET', `${BASE}/me`, { accessToken })
 }
 
+/**
+ * Subscribe the caller to a product. Fails (HTTP 4xx) if an active
+ * subscription already exists.
+ *
+ * Note: there is no payment step yet — the backend simply records the
+ * subscription. A real checkout flow will be added in a follow-up change.
+ *
+ * @param {string} accessToken
+ * @param {{ productId: string, autoRenew?: boolean }} payload
+ *   `autoRenew` defaults to `true`. The backend forces it to `false` for
+ *   LIFETIME products regardless of what we send.
+ * @returns {Promise<object>} the newly created UserSubscriptionResponse.
+ */
+export function subscribe(accessToken, { productId, autoRenew = true }) {
+  return request('POST', `${BASE}/`, {
+    accessToken,
+    body: { productId, autoRenew },
+  })
+}
+

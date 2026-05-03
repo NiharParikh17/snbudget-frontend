@@ -3,22 +3,25 @@ import { Navigate, useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ApiError } from '../lib/apiClient.js'
-import { listProducts } from '../api/subscriptions.js'
+import { listProducts, subscribe } from '../api/subscriptions.js'
 import { compareProducts, formatAmount, formatPrice } from '../lib/price.js'
 
 /**
  * ChoosePlan — shown to authenticated users who have no active subscription.
  *
- * For now this screen is informational only: the user can preview plans and
- * select one for keyboard / visual feedback, but the **Continue** button is
- * intentionally disabled ("Coming soon"). The actual `POST /api/subscriptions`
- * call lands in a follow-up change.
+ * The user picks a plan and clicks **Continue**, which calls
+ * `POST /api/subscriptions` with the selected product. There is no payment
+ * step yet — the backend simply enrolls the caller. On success we refresh
+ * `subscriptionStatus` on the auth context and navigate to `/welcome`,
+ * which is the same destination as users who already had an active
+ * subscription.
  *
  * Active subscribers are bounced back to `/welcome`; anonymous users are
  * filtered out one level up by `RequireAuth`.
  */
 function ChoosePlan() {
-  const { accessToken, subscriptionStatus, logout } = useAuth()
+  const { accessToken, subscriptionStatus, logout, refreshSubscription } =
+    useAuth()
   const navigate = useNavigate()
 
   // `products === null` is the "still loading" sentinel; once the request
@@ -31,6 +34,8 @@ function ChoosePlan() {
   const [reloadKey, setReloadKey] = useState(0)
   const [selectedId, setSelectedId] = useState(null)
   const [signingOut, setSigningOut] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState(null)
   const cardRefs = useRef({})
 
   useEffect(() => {
@@ -117,6 +122,30 @@ function ChoosePlan() {
       await logout()
     } finally {
       navigate('/', { replace: true })
+    }
+  }
+
+  async function handleContinue() {
+    if (!effectiveSelectedId || submitting) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      await subscribe(accessToken, {
+        productId: effectiveSelectedId,
+        autoRenew: true,
+      })
+      // Refresh the auth context's subscription status so the gate flips
+      // from `'none'` → `'active'` before we navigate. Without this the
+      // RequireSubscription guard would bounce the user right back here.
+      await refreshSubscription()
+      navigate('/welcome', { replace: true })
+    } catch (err) {
+      setSubmitError(
+        err instanceof ApiError
+          ? err.message
+          : 'Could not start your subscription. Please try again.',
+      )
+      setSubmitting(false)
     }
   }
 
@@ -268,28 +297,33 @@ function ChoosePlan() {
             </div>
 
             <div className="mt-10 flex flex-col items-center gap-3">
-              {/* The wrapping span is required for `title` to show on a
-                  disabled <button> in most browsers. */}
-              <span title="Coming soon" className="inline-block">
-                <Button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  aria-describedby="continue-help"
+              {submitError ? (
+                <div
+                  role="alert"
+                  className="w-full max-w-md rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300 text-center"
                 >
-                  Continue
-                </Button>
-              </span>
+                  {submitError}
+                </div>
+              ) : null}
+              <Button
+                type="button"
+                onClick={handleContinue}
+                disabled={submitting || !effectiveSelectedId}
+                aria-describedby="continue-help"
+              >
+                {submitting ? 'Starting…' : 'Continue'}
+              </Button>
               <p
                 id="continue-help"
                 className="text-sm text-slate-500 dark:text-slate-400"
               >
-                Subscriptions aren&apos;t live yet — checkout is coming soon.
+                No payment required yet — checkout will be added before
+                billing goes live.
               </p>
               <button
                 type="button"
                 onClick={handleSignOut}
-                disabled={signingOut}
+                disabled={signingOut || submitting}
                 className="mt-2 text-sm text-slate-500 dark:text-slate-400 hover:text-violet-600 dark:hover:text-violet-400 underline disabled:opacity-50"
               >
                 {signingOut ? 'Signing out…' : 'Sign out'}

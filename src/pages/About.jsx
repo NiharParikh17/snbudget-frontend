@@ -130,8 +130,9 @@ function About() {
             API. New accounts must verify their email address (via a link
             we email you) before they can sign in. After signing in,
             users are asked to <strong>choose a subscription plan</strong>
-            — the plan picker is live for preview, but checkout is not
-            yet enabled and no payments are processed. The budgeting and
+            and are enrolled immediately on the backend — no payment is
+            collected yet (checkout will be added before billing goes
+            live). The budgeting and
             splitting features are next; see the{' '}
             <Link
               to="/"

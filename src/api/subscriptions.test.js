@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { listProducts, getCurrentSubscription } from './subscriptions.js'
+import { listProducts, getCurrentSubscription, subscribe } from './subscriptions.js'
 
 function jsonResponse(body, init = {}) {
   return new Response(JSON.stringify(body), {
@@ -39,6 +39,30 @@ describe('subscriptions API', () => {
   it('getCurrentSubscription() returns null on 204 No Content', async () => {
     globalThis.fetch.mockResolvedValueOnce(new Response(null, { status: 204 }))
     await expect(getCurrentSubscription('tok')).resolves.toBeNull()
+  })
+
+  it('subscribe() POSTs /api/subscriptions/ with productId + autoRenew', async () => {
+    globalThis.fetch.mockResolvedValueOnce(
+      jsonResponse({ id: 's1', status: 'ACTIVE' }),
+    )
+    const result = await subscribe('tok', { productId: 'p-1' })
+    expect(result).toMatchObject({ id: 's1', status: 'ACTIVE' })
+    const [url, init] = globalThis.fetch.mock.calls[0]
+    expect(url).toMatch(/\/api\/subscriptions\/$/)
+    expect(init.method).toBe('POST')
+    expect(init.headers.Authorization).toBe('Bearer tok')
+    expect(init.headers['Content-Type']).toBe('application/json')
+    expect(JSON.parse(init.body)).toEqual({ productId: 'p-1', autoRenew: true })
+  })
+
+  it('subscribe() respects an explicit autoRenew=false', async () => {
+    globalThis.fetch.mockResolvedValueOnce(jsonResponse({ id: 's1' }))
+    await subscribe('tok', { productId: 'p-life', autoRenew: false })
+    const [, init] = globalThis.fetch.mock.calls[0]
+    expect(JSON.parse(init.body)).toEqual({
+      productId: 'p-life',
+      autoRenew: false,
+    })
   })
 })
 

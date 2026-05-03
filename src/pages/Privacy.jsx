@@ -101,13 +101,15 @@ function Privacy() {
             bug.
           </p>
           <p className="mt-3 text-slate-600 dark:text-slate-300">
-            SNBudget is moving to a paid subscription model. Today the
-            plan picker is shown to signed-in users for preview only —
-            checkout is not enabled, no payment information is collected,
-            and we do not transmit any data to a payment processor. When
-            checkout goes live, this section will be updated with the
-            specific processor we use and what they see. (Last updated
-            note bumped accordingly.)
+            SNBudget is moving to a paid subscription model. Choosing
+            a plan after sign-in records a subscription record on our
+            servers tied to your user ID, but <strong>no payment
+            information is collected at this stage</strong> and we do
+            not transmit any data to a payment processor — there is no
+            checkout step yet. When checkout goes live, this section
+            will be updated with the specific processor we use and what
+            they see, and the "Last updated" date will be bumped
+            accordingly.
           </p>
         </section>
 

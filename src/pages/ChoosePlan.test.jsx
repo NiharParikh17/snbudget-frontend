@@ -11,6 +11,7 @@ function mockAuth(overrides = {}) {
     accessToken: 'tok',
     subscriptionStatus: 'none',
     logout: vi.fn().mockResolvedValue(),
+    refreshSubscription: vi.fn().mockResolvedValue(),
     ...overrides,
   })
 }
@@ -115,15 +116,59 @@ describe('ChoosePlan', () => {
     expect(screen.queryByText(/best value/i)).toBeNull()
   })
 
-  it('renders a disabled Continue button with a "Coming soon" hint', async () => {
+  it('renders an enabled Continue button with helper text', async () => {
     vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue(PRODUCTS)
     renderPage()
     await waitFor(() => screen.getByText('Pro Monthly'))
     const cont = screen.getByRole('button', { name: /^continue$/i })
-    expect(cont).toBeDisabled()
+    expect(cont).toBeEnabled()
     expect(
-      screen.getByText(/subscriptions aren.t live yet/i),
+      screen.getByText(/no payment required yet/i),
     ).toBeInTheDocument()
+  })
+
+  it('subscribes to the selected plan, refreshes status, and navigates to /welcome', async () => {
+    const refreshSubscription = vi.fn().mockResolvedValue()
+    mockAuth({ refreshSubscription })
+    vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue(PRODUCTS)
+    const subSpy = vi
+      .spyOn(subscriptionsApi, 'subscribe')
+      .mockResolvedValue({ id: 's1', status: 'ACTIVE' })
+    renderPage()
+    await waitFor(() => screen.getByText('Pro Monthly'))
+    // Pick the yearly card
+    const radios = screen.getAllByRole('radio')
+    fireEvent.click(radios[1])
+    await userEvent.click(screen.getByRole('button', { name: /^continue$/i }))
+    await waitFor(() =>
+      expect(subSpy).toHaveBeenCalledWith('tok', {
+        productId: 'p-year',
+        autoRenew: true,
+      }),
+    )
+    await waitFor(() => expect(refreshSubscription).toHaveBeenCalled())
+    await waitFor(() =>
+      expect(
+        screen.getByRole('heading', { level: 1, name: /^welcome$/i }),
+      ).toBeInTheDocument(),
+    )
+  })
+
+  it('shows an error and re-enables Continue if subscribe fails', async () => {
+    vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue(PRODUCTS)
+    vi.spyOn(subscriptionsApi, 'subscribe').mockRejectedValue(
+      new Error('nope'),
+    )
+    renderPage()
+    await waitFor(() => screen.getByText('Pro Monthly'))
+    const cont = screen.getByRole('button', { name: /^continue$/i })
+    await userEvent.click(cont)
+    expect(
+      await screen.findByRole('alert'),
+    ).toHaveTextContent(/could not start your subscription/i)
+    expect(
+      screen.getByRole('button', { name: /^continue$/i }),
+    ).toBeEnabled()
   })
 
   it('shows an error state with a retry button', async () => {

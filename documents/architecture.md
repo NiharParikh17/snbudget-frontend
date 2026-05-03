@@ -190,12 +190,17 @@ src/
   in `src/api/` alongside `auth.js` / `users.js`.
 - **Subscription Management API** (`/api/subscriptions/*`, accessed via the
   same gateway) is wrapped in `src/api/subscriptions.js` (`listProducts`,
-  `getCurrentSubscription`). On every successful authentication
+  `getCurrentSubscription`, `subscribe`). On every successful authentication
   `AuthContext` calls `GET /api/subscriptions/me` and stores the result as
   `subscriptionStatus: 'unknown' | 'none' | 'active'`. A `204 No Content`
   (or any error — fail closed) maps to `'none'`. The
   `components/RequireSubscription.jsx` guard composes inside `RequireAuth`
-  and redirects users with no active subscription to `/choose-plan`.
+  and redirects users with no active subscription to `/choose-plan`. From
+  `/choose-plan` the user picks a plan and clicks **Continue**, which
+  calls `POST /api/subscriptions` with `{ productId, autoRenew: true }`,
+  re-runs the `/me` lookup via `refreshSubscription()` so the gate flips
+  to `'active'`, and routes to `/welcome`. There is no payment step yet —
+  the backend simply records the subscription.
 - The gateway MUST send `Access-Control-Allow-Credentials: true` with an
   explicit `Access-Control-Allow-Origin` (not `*`) for
   `credentials: 'include'` to work cross-origin in local dev.

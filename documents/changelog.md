@@ -6,6 +6,62 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Subscription enrollment from `/choose-plan`** — the **Continue**
+  button is now wired up. Clicking it calls
+  `POST /api/subscriptions` with `{ productId, autoRenew: true }`
+  (the backend forces `autoRenew=false` for LIFETIME products),
+  refreshes `subscriptionStatus` on the auth context to `'active'`,
+  and navigates the user to `/welcome` — the same destination as
+  users who already had an active subscription. There is **no
+  payment step yet**: the backend simply records the subscription.
+  New `subscribe(accessToken, { productId, autoRenew })` wrapper added
+  to `src/api/subscriptions.js`. While the request is in flight the
+  button shows "Starting…" and is disabled; on failure an inline
+  `role="alert"` error is rendered and the button is re-enabled. The
+  previous "Coming soon" tooltip + helper text were replaced with
+  "No payment required yet — checkout will be added before billing
+  goes live." Tests: 2 new cases in `subscriptions.test.js` (POST
+  shape, explicit `autoRenew=false` honored), and 2 new cases in
+  `ChoosePlan.test.jsx` (happy path subscribes → refreshes → routes
+  to `/welcome`; failure path shows alert + re-enables Continue).
+  Existing "disabled Continue" test rewritten as "enabled Continue
+  with helper text". Total: **117 tests** (was 113).
+
+### Changed
+- **About / Privacy / Terms** copy updated to reflect that selecting
+  a plan now creates a real subscription record on the backend
+  (still with no payment step). About: removed the "preview only"
+  language. Privacy: clarified that a subscription record tied to
+  the user ID is now stored, but no payment data is collected and
+  no payment processor is contacted. Terms: clarified that picking
+  a plan enrolls the account but no fees are owed and no checkout
+  step exists yet.
+
+### TODO (under [Unreleased])
+- **Checkout / payments UI** — the subscribe call is now live but
+  there is still no payment collection. Once a processor is chosen,
+  add the checkout step, then bump the relevant copy on About /
+  Privacy / Terms with the chosen payment-processor details and
+  pricing / billing / refund / renewal terms.
+- **Currency from backend** — `lib/price.js` hard-codes USD; add a
+  `currency` field to `ProductResponse` (or expose it via a separate
+  catalog meta endpoint) and wire it through `formatAmount`.
+- **Plans entry point in the Header** — once active subscribers can
+  upgrade/downgrade, expose a "Plans" link from the Header user menu.
+- **Auto-renew toggle on the plan picker** — currently we always
+  send `autoRenew: true`. When real billing lands, expose an
+  explicit toggle (and hide it for LIFETIME plans, which the
+  backend forces to `false`).
+
+### Security
+- No new runtime dependencies — only native `fetch`. `npm audit`
+  to be re-verified after this change is applied.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Added
 - **Subscription gating + plan picker** — after every successful
   authentication, `AuthContext` calls `GET /api/subscriptions/me` and
   exposes a new `subscriptionStatus` (`'unknown' | 'none' | 'active'`)
