@@ -6,6 +6,86 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Changed
+- **Header and Footer go full-width when signed in.** Previously both
+  used a centered `max-w-6xl` container, which left a large empty
+  margin to the right of the new sidebar and made the logo + actions
+  visually drift away from the screen edges. While `useAuth().status`
+  is `'authenticated'`, the chrome now drops the max-width cap so the
+  Logo sits flush left and the **Settings** / **Sign out** buttons
+  (header) and **About / Privacy / Terms** + copyright (footer) sit
+  flush right. Public / signed-out pages keep the existing centered
+  layout so the marketing surfaces are unchanged.
+- `Footer.jsx` now consumes `useAuth()`; its test switched to
+  `renderWithProviders` to wrap it in `AuthProvider` (matching how
+  `Header.test.jsx` already renders).
+
+### Added
+- **Authenticated app shell with left-sidebar tabs.** New
+  `components/AppShell.jsx` wraps every `/app/*` route with the
+  existing `RequireAuth` + `RequireSubscription` guards and renders
+  `components/Sidebar.jsx` next to a routed `<Outlet/>`. The sidebar
+  is a single `nav` (aria-label "Primary") of `NavLink`s with violet
+  active state; on viewports below `md:` it is hidden behind a "Menu"
+  toggle that opens a slide-over with a backdrop and closes on link
+  tap or backdrop click.
+- **Five primary tabs** wired to placeholder pages (each renders a
+  heading + "coming soon" stub):
+  - `/app/dashboard` → `pages/Dashboard.jsx` (home icon)
+  - `/app/transactions` → `pages/Transactions.jsx` (credit-card icon)
+  - `/app/reports` → `pages/Reports.jsx` (pie-chart icon)
+  - `/app/budget` → `pages/Budget.jsx` (wallet icon)
+  - `/app/splitter` → `pages/Splitter.jsx` (users icon)
+  Plus `/app` → redirects to `/app/dashboard`, and `/app/settings`
+  now hosts the existing Settings page inside the same shell.
+- **Tab registry** at `src/components/primaryTabs.js` (`PRIMARY_TABS`)
+  — single source of truth for tab order, route, label, and icon.
+  `Sidebar` derives its rendered list from this array; add or reorder
+  tabs by editing the array only.
+- **Hand-rolled icon components** under `src/components/icons/`:
+  `IconHome`, `IconCreditCard`, `IconPieChart`, `IconWallet`,
+  `IconUsers`. Each is a tiny stateless component using `currentColor`
+  + `aria-hidden`, accepts `className`, and ships with a parametrised
+  smoke test.
+
+### Changed
+- **Post-signin landing is now `/app/dashboard`** (was `/welcome`).
+  `pages/SignIn.jsx` and `pages/ChoosePlan.jsx` updated. The Header's
+  Settings link now points to `/app/settings`.
+- **Architecture doc** updated for the new `AppShell`, `Sidebar`,
+  `primaryTabs`, `icons/` module, and the `/app/*` nested-route table.
+- **Roadmap** Phase 0 ticks the new authenticated app shell item.
+
+### Removed
+- **`pages/Welcome.jsx`** (and its test) — the post-onboarding
+  placeholder is replaced by the real `Dashboard` tab inside the app
+  shell. `/welcome` and the legacy top-level `/settings` now resolve
+  to `<Navigate>` redirects (`/app/dashboard` and `/app/settings`
+  respectively) so any stale links keep working.
+
+### Tests
+- `Sidebar.test.jsx` (4 cases: 5 tabs render with correct hrefs, an
+  svg per tab, active-tab styling, `onNavigate` fires on click).
+- `AppShell.test.jsx` (4 cases: anonymous → `/signin`, unsubscribed
+  → `/choose-plan`, authorised renders sidebar + outlet, mobile
+  drawer open/close).
+- `icons/icons.test.jsx` (10 parametrised cases — render +
+  `className` pass-through for all 5 icons).
+- `Dashboard.test.jsx`, `Transactions.test.jsx`, `Reports.test.jsx`,
+  `Budget.test.jsx`, `Splitter.test.jsx` (1 case each — heading +
+  "coming soon" stub).
+- `ChoosePlan.test.jsx` updated to assert `/app/dashboard` instead of
+  `/welcome` for the post-subscribe and active-subscriber paths.
+- Total suite: **177 tests** (was 155).
+
+### Security
+- No new runtime dependencies. `npm audit` reports **0
+  vulnerabilities**; `npm outdated` is clean.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
 - **Change-plan modal — no-op submit guard.** When a `pendingChange`
   is already queued, the *Change scheduled plan* modal pre-selects the
   scheduled target by default (it's the only "other" product in the

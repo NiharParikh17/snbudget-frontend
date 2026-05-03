@@ -87,8 +87,10 @@ See [`documents/README.md`](./documents/README.md) for the doc index.
 
 🚧 Early scaffolding. The app currently ships the public pages — **Home**
 (`/`), **About** (`/about`), **Privacy** (`/privacy`), **Terms**
-(`/terms`) — plus the first authenticated flows: **Sign up** (`/signup`)
-and **Sign in** (`/signin`) backed by the SNBudget Identity API, with a
-placeholder **Welcome** (`/welcome`) page after login. The real dashboard
-and budgeting features are next — see
+(`/terms`) — plus the first authenticated flows: **Sign up** (`/signup`) and **Sign in** (`/signin`) backed by the SNBudget Identity API. Once
+signed in, users land in the authenticated **app shell** at `/app/*`,
+which exposes a left-side sidebar with five tabs — **Dashboard**,
+**Transactions**, **Reports**, **Budget**, **Splitter** — plus
+**Settings** in the header. Tab content is placeholder for now; the
+real budgeting and splitting features are next — see
 [`documents/roadmap.md`](./documents/roadmap.md).

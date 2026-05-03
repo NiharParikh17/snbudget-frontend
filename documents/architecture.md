@@ -114,13 +114,22 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
     other than `success` is treated as invalid (defensive default). The
     success state auto-redirects to `/signin` after 10 s with a CTA
     fallback.)
-  - `/welcome` → `pages/Welcome.jsx` (guarded by `RequireAuth` **and**
-    `RequireSubscription`)
   - `/choose-plan` → `pages/ChoosePlan.jsx` (guarded by `RequireAuth`;
-    redirects active subscribers to `/welcome`)
-  - `/settings` → `pages/Settings.jsx` (guarded by `RequireAuth` **and**
-    `RequireSubscription`; subscription management hub — see "Backend
-    integration" below)
+    redirects active subscribers to `/app/dashboard`)
+  - `/app/*` → `components/AppShell.jsx` (parent route guarded by
+    `RequireAuth` + `RequireSubscription`; renders the left sidebar +
+    routed child). Children:
+    - `/app` → redirects to `/app/dashboard`
+    - `/app/dashboard` → `pages/Dashboard.jsx` (placeholder)
+    - `/app/transactions` → `pages/Transactions.jsx` (placeholder)
+    - `/app/reports` → `pages/Reports.jsx` (placeholder)
+    - `/app/budget` → `pages/Budget.jsx` (placeholder)
+    - `/app/splitter` → `pages/Splitter.jsx` (placeholder)
+    - `/app/settings` → `pages/Settings.jsx` (subscription management
+      hub — see "Backend integration" below)
+  - `/welcome` → redirects to `/app/dashboard` (legacy; superseded by
+    the `/app/*` shell)
+  - `/settings` → redirects to `/app/settings` (legacy)
   - `*` → redirect to `/` (until a dedicated 404 page exists)
 - Use `<Link>` / `<NavLink>` for in-app navigation; never bare `<a href>` for
   internal routes.

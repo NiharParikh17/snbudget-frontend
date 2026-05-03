@@ -12,6 +12,9 @@
 - [x] AI workflow instructions (`.github/copilot-instructions.md`)
 - [x] Basic app shell (Header with Sign in / Sign up, static Footer, Layout
       wrapper, unauthenticated Home page)
+- [x] Authenticated app shell (`/app/*`) with left sidebar + tabs
+      (Dashboard, Transactions, Reports, Budget, Splitter) — placeholder
+      pages, real content lands in Phases 1–3.
 - [x] Routing (`react-router-dom` v7) with `/` and `/about` routes
 - [x] About page (`/about`) — kept in sync per AI workflow rule 3b
 - [x] Privacy page (`/privacy`) — pre-launch statement of intent

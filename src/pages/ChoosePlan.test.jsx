@@ -21,7 +21,7 @@ function renderPage() {
     <MemoryRouter initialEntries={['/choose-plan']}>
       <Routes>
         <Route path="/choose-plan" element={<ChoosePlan />} />
-        <Route path="/welcome" element={<h1>Welcome</h1>} />
+        <Route path="/app/dashboard" element={<h1>Dashboard</h1>} />
         <Route path="/" element={<h1>Home</h1>} />
       </Routes>
     </MemoryRouter>,
@@ -127,7 +127,7 @@ describe('ChoosePlan', () => {
     ).toBeInTheDocument()
   })
 
-  it('subscribes to the selected plan, refreshes status, and navigates to /welcome', async () => {
+  it('subscribes to the selected plan, refreshes status, and navigates to /app/dashboard', async () => {
     const refreshSubscription = vi.fn().mockResolvedValue()
     mockAuth({ refreshSubscription })
     vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue(PRODUCTS)
@@ -149,7 +149,7 @@ describe('ChoosePlan', () => {
     await waitFor(() => expect(refreshSubscription).toHaveBeenCalled())
     await waitFor(() =>
       expect(
-        screen.getByRole('heading', { level: 1, name: /^welcome$/i }),
+        screen.getByRole('heading', { level: 1, name: /^dashboard$/i }),
       ).toBeInTheDocument(),
     )
   })
@@ -199,12 +199,12 @@ describe('ChoosePlan', () => {
     expect(logout).toHaveBeenCalled()
   })
 
-  it('redirects active subscribers to /welcome', async () => {
+  it('redirects active subscribers to /app/dashboard', async () => {
     mockAuth({ subscriptionStatus: 'active' })
     vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue(PRODUCTS)
     renderPage()
     expect(
-      await screen.findByRole('heading', { level: 1, name: /^welcome$/i }),
+      await screen.findByRole('heading', { level: 1, name: /^dashboard$/i }),
     ).toBeInTheDocument()
   })
 })
