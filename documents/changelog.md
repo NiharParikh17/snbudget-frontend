@@ -5,6 +5,33 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Changed
+- **Change-plan modal — no-op submit guard.** When a `pendingChange`
+  is already queued, the *Change scheduled plan* modal pre-selects the
+  scheduled target by default (it's the only "other" product in the
+  common 2-plan catalog). Submitting that selection would be a no-op
+  round-trip. The page now:
+  1. **Disables Schedule change** whenever the picked target equals
+     `pendingChange.targetProduct.id`, with a helper line
+     *"This plan is already scheduled for your next billing cycle.
+     Pick a different one to schedule a new change, or cancel the
+     scheduled change below."* and a matching `title` tooltip.
+  2. **Short-circuits `handleConfirmChange`** in the same case so a
+     programmatic / stale click never hits
+     `POST /api/subscriptions/me/change` — belt-and-brace defence on
+     top of the disabled button. The modal just closes.
+
+### Tests
+- `Settings.test.jsx` — new case asserting that with a queued change
+  to Pro Yearly and Pro Yearly pre-selected, *Schedule change* is
+  disabled, the explainer is rendered, and `requestProductChange` is
+  never called. Net Settings test count: 22 (was 21). Total suite:
+  **155 tests** (was 154).
+
+---
+
+## [Unreleased — earlier this iteration]
+
 ### Added
 - **`Modal` component** (`src/components/Modal.jsx`) — accessible
   dialog primitive shared across the app. Portal-mounted on

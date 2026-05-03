@@ -260,6 +260,36 @@ describe('Settings', () => {
     ).toBeInTheDocument()
   })
 
+  it('disables Schedule change when the picked target equals the already-scheduled plan', async () => {
+    stubAllOk({ sub: { ...ACTIVE_SUB, pendingChange: PENDING_CHANGE } })
+    vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue([
+      PRO_MONTHLY,
+      PRO_YEARLY,
+    ])
+    const changeSpy = vi
+      .spyOn(subscriptionsApi, 'requestProductChange')
+      .mockResolvedValue({ id: 'c1', status: 'PENDING' })
+
+    renderPage()
+    await userEvent.click(
+      await screen.findByRole('button', { name: /^change scheduled plan$/i }),
+    )
+    // Pro Yearly is the only "other" product AND the already-scheduled
+    // target → it's pre-selected, so Schedule change is disabled out of
+    // the gate and an explainer is rendered.
+    const radio = await screen.findByRole('radio', { name: /pro yearly/i })
+    expect(radio).toBeChecked()
+    const scheduleBtn = screen.getByRole('button', {
+      name: /^schedule change$/i,
+    })
+    expect(scheduleBtn).toBeDisabled()
+    expect(
+      screen.getByText(/this plan is already scheduled/i),
+    ).toBeInTheDocument()
+    // Belt-and-brace: the backend was never contacted.
+    expect(changeSpy).not.toHaveBeenCalled()
+  })
+
   it('closes the change-plan modal when the close button is clicked', async () => {
     stubAllOk()
     vi.spyOn(subscriptionsApi, 'listProducts').mockResolvedValue([

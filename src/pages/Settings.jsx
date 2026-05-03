@@ -227,6 +227,15 @@ function Settings() {
       ? changeTargetId
       : otherProducts[0]?.id ?? null
 
+  // True when the user is "changing" to the plan they've already
+  // scheduled — submitting would be a no-op round-trip to the backend.
+  // Used to disable Schedule change AND to short-circuit the handler so
+  // even a programmatic call avoids the network request.
+  const isAlreadyScheduledTarget =
+    !!pendingChange &&
+    !!effectiveChangeTargetId &&
+    pendingChange.targetProduct?.id === effectiveChangeTargetId
+
   // --- Mutations ----------------------------------------------------------
 
 
@@ -267,6 +276,15 @@ function Settings() {
 
   const handleConfirmChange = useCallback(async () => {
     if (!effectiveChangeTargetId || changeSubmitting) return
+    // No-op guard: the picked target is already the scheduled change.
+    // The button is also disabled in this case, but we belt-and-brace
+    // here so a programmatic / stale click never hits the backend.
+    if (isAlreadyScheduledTarget) {
+      setMode('idle')
+      setChangeError(null)
+      setChangeTargetId(null)
+      return
+    }
     setChangeSubmitting(true)
     setChangeError(null)
     try {
@@ -287,7 +305,7 @@ function Settings() {
     } finally {
       setChangeSubmitting(false)
     }
-  }, [accessToken, effectiveChangeTargetId, changeSubmitting])
+  }, [accessToken, effectiveChangeTargetId, changeSubmitting, isAlreadyScheduledTarget])
 
   const handleCancelScheduledChange = useCallback(async () => {
     if (cancelChangeSubmitting) return
@@ -659,11 +677,24 @@ function Settings() {
                 changeSubmitting ||
                 !effectiveChangeTargetId ||
                 products === null ||
-                cancelChangeSubmitting
+                cancelChangeSubmitting ||
+                isAlreadyScheduledTarget
+              }
+              title={
+                isAlreadyScheduledTarget
+                  ? 'This plan is already scheduled — pick a different one to schedule a new change.'
+                  : undefined
               }
             >
               {changeSubmitting ? 'Scheduling…' : 'Schedule change'}
             </Button>
+            {isAlreadyScheduledTarget ? (
+              <p className="basis-full -mt-1 text-xs text-slate-500 dark:text-slate-400">
+                This plan is already scheduled for your next billing cycle.
+                Pick a different one to schedule a new change, or cancel
+                the scheduled change below.
+              </p>
+            ) : null}
             {pendingChange ? (
               <Button
                 type="button"
