@@ -10,6 +10,6 @@ import { request } from '../lib/apiClient.js'
  * No token required — this is the public registration endpoint.
  */
 export function createUser(payload) {
-  return request('POST', '/api/users', { body: payload })
+  return request('POST', '/api/identity/users', { body: payload })
 }
 
