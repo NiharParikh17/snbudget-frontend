@@ -60,6 +60,13 @@ src/
   moves focus into the dialog on open. Use it for any in-app dialog (the
   Settings page's *Change plan* picker is the first consumer) instead of
   expanding an in-page tile that shoves the layout around.
+- `components/Card.jsx` is the **only** rounded-surface primitive used by
+  authenticated pages (Settings, Groups, Group detail). Use it instead of
+  re-typing the `rounded-2xl border ... shadow-sm` utility soup.
+- `components/ErrorBanner.jsx` is the **only** inline-error surface for
+  card-scoped retryable loads (`role="alert"` + optional **Try again**
+  button). Pair it with the per-slice "set state to `null` then bump
+  `reloadKey`" pattern used in Settings and GroupDetail.
 
 ## Theme system
 
@@ -124,7 +131,11 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
     - `/app/transactions` → `pages/Transactions.jsx` (placeholder)
     - `/app/reports` → `pages/Reports.jsx` (placeholder)
     - `/app/budget` → `pages/Budget.jsx` (placeholder)
-    - `/app/splitter` → `pages/Splitter.jsx` (placeholder)
+    - `/app/splitter` → redirects to `/app/groups` (legacy)
+    - `/app/groups` → `pages/Groups.jsx` (list of groups + Create
+      modal — see "Backend integration" below)
+    - `/app/groups/:id` → `pages/GroupDetail.jsx` (details / members
+      / settings management)
     - `/app/settings` → `pages/Settings.jsx` (subscription management
       hub — see "Backend integration" below)
   - `/welcome` → redirects to `/app/dashboard` (legacy; superseded by
@@ -250,6 +261,24 @@ src/
   `getSettings` call (with a retryable inline error on failure). Add a
   key to `KNOWN_SETTING_KEYS` and render it in `pages/Settings.jsx` to
   expose a new preference.
+- **Group Management API** (`/api/groups/*`) is wrapped in
+  `src/api/groups.js` (`listMyGroups`, `getGroup`, `createGroup`,
+  `updateGroup`, `deleteGroup`, `listMembers`, `addMember`,
+  `removeMember`, `leaveGroup`, `getGroupSettings`,
+  `updateGroupSettings`) plus a forward-compat
+  `KNOWN_GROUP_SETTING_KEYS` allow-list and `pickKnownGroupSettings()`
+  helper that mirror the user-settings pattern. Two routes consume it:
+  `/app/groups` (`pages/Groups.jsx`) lists every group the user is an
+  active member of and hosts the Create-group modal; `/app/groups/:id`
+  (`pages/GroupDetail.jsx`) renders three independent cards
+  (Details / Members / Settings) covering edit, delete, leave, add
+  member (UUID input — friend search is a follow-up), remove member,
+  and the empty-allow-list group settings. Domain rules surfaced in
+  the UI: every group has exactly one OWNER, ownership is fixed for
+  the lifetime of the group (owners cannot leave — they must delete
+  the group instead), and the owner row's **Remove** action is hidden
+  to honor the single-owner invariant (the backend currently does NOT
+  enforce this — see the changelog TODO).
 - The gateway MUST send `Access-Control-Allow-Credentials: true` with an
   explicit `Access-Control-Allow-Origin` (not `*`) for
   `credentials: 'include'` to work cross-origin in local dev.

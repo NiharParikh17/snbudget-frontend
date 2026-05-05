@@ -15,7 +15,8 @@ import Dashboard from './pages/Dashboard.jsx'
 import Transactions from './pages/Transactions.jsx'
 import Reports from './pages/Reports.jsx'
 import Budget from './pages/Budget.jsx'
-import Splitter from './pages/Splitter.jsx'
+import Groups from './pages/Groups.jsx'
+import GroupDetail from './pages/GroupDetail.jsx'
 
 function App() {
   return (
@@ -44,13 +45,15 @@ function App() {
           <Route path="transactions" element={<Transactions />} />
           <Route path="reports" element={<Reports />} />
           <Route path="budget" element={<Budget />} />
-          <Route path="splitter" element={<Splitter />} />
+          <Route path="groups" element={<Groups />} />
+          <Route path="groups/:id" element={<GroupDetail />} />
           <Route path="settings" element={<Settings />} />
         </Route>
 
         {/* Legacy redirects — old links keep working. */}
         <Route path="/welcome" element={<Navigate to="/app/dashboard" replace />} />
         <Route path="/settings" element={<Navigate to="/app/settings" replace />} />
+        <Route path="/app/splitter" element={<Navigate to="/app/groups" replace />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

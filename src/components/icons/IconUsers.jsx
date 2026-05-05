@@ -1,5 +1,5 @@
 /**
- * IconUsers — two-people glyph used for the Splitter tab.
+ * IconUsers — two-people glyph used for the Groups tab.
  */
 function IconUsers({ className = 'h-5 w-5' }) {
   return (

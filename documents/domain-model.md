@@ -86,6 +86,47 @@ roll out new settings before UI for them ships.
 - `email`
 - `defaultCurrency` (e.g. `"USD"`)
 
+### Group
+
+A named collection of users that share expenses (roommates, a trip, a
+recurring split). Owned by the group-management service.
+
+- `id`
+- `name`, `description`
+- `ownerId` — exactly one owner per group, **fixed for the lifetime of
+  the group**. Ownership cannot be transferred and there is no concept
+  of co-owners. To step away, the owner must delete the group.
+- `createdAt`, `updatedAt`
+
+### GroupMember
+
+A user's membership in a `Group`. The group-management service models
+re-joins as new active rows rather than mutating an old one.
+
+- `id`, `groupId`, `userId`
+- `role` — `OWNER | MEMBER`. Exactly one `OWNER` row per group.
+- `status` — `ACTIVE | LEFT | REMOVED`
+- `joinedAt`, `updatedAt`
+
+The frontend lists active members via `GET /api/groups/{id}/members` and
+hides the **Remove** action against the owner row to honor the
+single-owner invariant. The backend currently allows any active member
+to remove any other member (including the owner), so the rule is UI-only
+today — see the changelog TODO for the matching server-side ask.
+
+### GroupSetting
+
+A single key/value preference for a `Group`. Owned by the
+group-management service.
+
+- `key` — matches a backend `GroupSettingKey` enum constant
+- `value`, `defaultValue`, `valueType`, `allowedValues` — same shape as
+  `UserSetting`
+
+The backend always returns every known key; the frontend keeps its own
+allow-list (`KNOWN_GROUP_SETTING_KEYS` in `src/api/groups.js`, currently
+empty) and silently drops unknown keys via `pickKnownGroupSettings()`.
+
 ### Account (optional, future)
 
 A bucket of money (checking, credit card, cash). Used to attribute transactions.

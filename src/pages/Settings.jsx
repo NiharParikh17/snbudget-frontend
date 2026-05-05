@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
+import Card from '../components/Card.jsx'
+import ErrorBanner from '../components/ErrorBanner.jsx'
 import Modal from '../components/Modal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ApiError } from '../lib/apiClient.js'
@@ -74,31 +76,6 @@ function StatusBadge({ status }) {
   )
 }
 
-function Card({ children, className = '' }) {
-  return (
-    <section
-      className={`rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm ${className}`.trim()}
-    >
-      {children}
-    </section>
-  )
-}
-
-function ErrorBanner({ children, onRetry }) {
-  return (
-    <div
-      role="alert"
-      className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-    >
-      <span>{children}</span>
-      {onRetry ? (
-        <Button type="button" variant="secondary" onClick={onRetry}>
-          Try again
-        </Button>
-      ) : null}
-    </div>
-  )
-}
 
 function Settings() {
   const { accessToken, refreshSubscription } = useAuth()

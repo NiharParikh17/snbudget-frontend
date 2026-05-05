@@ -5,7 +5,108 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ## [Unreleased]
 
+### Added
+- **Group management is live.** Two new authenticated routes inside the
+  `/app/*` shell:
+  - `/app/groups` (`pages/Groups.jsx`) — list of every group the user
+    is an active member of, with an **Owner** badge for groups they
+    own, an empty state, retryable inline error, and a **New group**
+    modal (`name` + `description`). On create, the page navigates
+    straight into the new group's detail view.
+  - `/app/groups/:id` (`pages/GroupDetail.jsx`) — three independent
+    cards (Details / Members / Settings), each with its own
+    load/error/retry. Supports edit (any active member), delete
+    (owner only, two-step confirm with "this deletes all data"
+    warning), leave (non-owners only — owners see *"Ownership can't
+    be transferred — to step away from this group, delete it."*),
+    add member (paste UUID, format pre-checked client-side), and
+    remove member (per-row confirm; **hidden against the owner row**
+    and the current user's own row to honor the single-owner
+    invariant and steer self-removal through *Leave* instead). The
+    Settings card runs `getGroupSettings` and surfaces only keys in
+    `KNOWN_GROUP_SETTING_KEYS` (currently empty → empty-state copy),
+    matching the forward-compat policy used for user settings.
+- **`src/api/groups.js`** — wrappers for every endpoint in the
+  SNBudget Group Management API (`listMyGroups`, `getGroup`,
+  `createGroup`, `updateGroup`, `deleteGroup`, `listMembers`,
+  `addMember`, `removeMember`, `leaveGroup`, `getGroupSettings`,
+  `updateGroupSettings`) plus the `KNOWN_GROUP_SETTING_KEYS`
+  allow-list and `pickKnownGroupSettings()` helper. All routes go
+  through the existing `lib/apiClient.js` (gateway base
+  `/api/groups`).
+- **Shared UI primitives extracted from `Settings.jsx`**:
+  - `src/components/Card.jsx` — single source of truth for the
+    rounded-surface card shell used by authenticated pages.
+  - `src/components/ErrorBanner.jsx` — `role="alert"` inline error
+    with optional **Try again** button for card-scoped retryable
+    loads.
+  Settings now imports them; Groups and GroupDetail also consume
+  them so the two new pages don't repeat the utility soup.
+
 ### Changed
+- **About page** — "Where we are today" now mentions group
+  management (create / edit / delete groups, add or remove members,
+  leave a group) alongside the existing auth + subscription flows.
+- **Architecture doc** updated for `src/api/groups.js`, the new
+  `/app/groups` + `/app/groups/:id` route entries, and the new
+  shared `Card` / `ErrorBanner` primitives.
+- **Domain model** gained `Group`, `GroupMember`, and `GroupSetting`
+  entities, including the explicit invariant *"every group has
+  exactly one OWNER; ownership is fixed for the lifetime of the
+  group and cannot be transferred"*.
+- **Roadmap** Phase 2 ticks the Friends/Groups item as in-progress.
+
+### Tests
+- `src/api/groups.test.js` (13 cases — one per wrapper +
+  `pickKnownGroupSettings` allow-list filtering).
+- `src/components/Card.test.jsx` (2) and
+  `src/components/ErrorBanner.test.jsx` (3).
+- `src/pages/Groups.test.jsx` rewritten (5 cases: list with owner
+  badge, empty state, error + retry, create-and-navigate, blank
+  name validation).
+- `src/pages/GroupDetail.test.jsx` (9 cases: parallel load shows
+  owner-only Delete, non-owner sees Leave, details retry, edit
+  flow, owner-delete navigates to list, non-owner-leave navigates
+  to list, Remove hidden on owner + self rows, invalid UUID
+  rejected, valid UUID adds member and refreshes the list).
+- `App.test.jsx` gains a `/app/groups/:id` redirect-when-anonymous
+  case.
+- Total suite: **209 tests** (was 177).
+
+### Out of scope (intentional, not deferred)
+- **Ownership transfer / co-owners.** A group has exactly one
+  owner for life. To step away, the owner must delete the group.
+  This is enforced UI-side and called out in the domain model.
+
+### TODO (under [Unreleased])
+- **Server-side single-owner enforcement on member removal.** The
+  backend currently allows any active member to remove any other
+  member, including the owner. The UI hides the **Remove** action
+  on the owner row, but a malicious member could still POST the
+  request directly. Track an "OWNER row is non-removable" rule on
+  the backend.
+- **Friend search for Add member.** The UI accepts a pasted user
+  UUID with a client-side format check. Replace with email /
+  handle lookup as soon as a search endpoint exists, then drop
+  the UUID input.
+- **Group settings UI.** `KNOWN_GROUP_SETTING_KEYS` is empty.
+  Add the first preference (likely `CURRENCY`) and wire a control
+  in the Settings card.
+
+### Security
+- No new runtime dependencies — only native `fetch`. `npm audit`
+  to be re-verified after this change is applied.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Renamed the `Splitter` tab to `Groups`.** `pages/Splitter.jsx` →
+  `pages/Groups.jsx` (and its test); `PRIMARY_TABS` entry updated to
+  `{ to: '/app/groups', label: 'Groups' }` (icon unchanged); App route
+  is now `/app/groups`. A legacy `<Navigate>` from `/app/splitter` →
+  `/app/groups` keeps any in-flight links working.
 - **Header and Footer go full-width when signed in.** Previously both
   used a centered `max-w-6xl` container, which left a large empty
   margin to the right of the new sidebar and made the logo + actions

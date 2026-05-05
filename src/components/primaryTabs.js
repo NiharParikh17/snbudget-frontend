@@ -18,6 +18,6 @@ export const PRIMARY_TABS = [
   { to: '/app/transactions', label: 'Transactions', Icon: IconCreditCard },
   { to: '/app/reports', label: 'Reports', Icon: IconPieChart },
   { to: '/app/budget', label: 'Budget', Icon: IconWallet },
-  { to: '/app/splitter', label: 'Splitter', Icon: IconUsers },
+  { to: '/app/groups', label: 'Groups', Icon: IconUsers },
 ]
 
