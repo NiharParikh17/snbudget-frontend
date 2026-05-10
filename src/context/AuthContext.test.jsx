@@ -113,7 +113,7 @@ describe('AuthContext', () => {
     )
 
     const logoutCall = globalThis.fetch.mock.calls.find(([url]) =>
-      /\/api\/auth\/logout$/.test(url),
+      /\/api\/identity\/auth\/logout$/.test(url),
     )
     expect(logoutCall).toBeDefined()
     expect(logoutCall[1].headers.Authorization).toBe('Bearer live-token')

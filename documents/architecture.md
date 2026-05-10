@@ -25,7 +25,7 @@
 ```
 src/
 ├── assets/            # Static assets imported by components
-├── components/        # Reusable UI: Button, Logo, Header, Footer, Layout, ...
+├── components/        # Reusable UI: Button, Logo, Modal, Header, Footer, Layout, ...
 ├── context/           # React contexts: ThemeContext (theme provider + useTheme hook)
 ├── pages/             # Route-level components: Home, About, ...
 ├── test/setup.js      # Global test setup (jest-dom matchers, matchMedia stub, cleanup)
@@ -54,6 +54,19 @@ src/
 - `components/Logo.jsx` is the **only** place the brand mark (SVG bolt +
   gradient wordmark) is defined. Use it in any surface that needs the brand
   identity.
+- `components/Modal.jsx` is the **only** dialog primitive. It portals into
+  `document.body`, locks body scroll while open, dismisses on ESC + backdrop
+  click (each opt-out-able), wires the heading via `aria-labelledby`, and
+  moves focus into the dialog on open. Use it for any in-app dialog (the
+  Settings page's *Change plan* picker is the first consumer) instead of
+  expanding an in-page tile that shoves the layout around.
+- `components/Card.jsx` is the **only** rounded-surface primitive used by
+  authenticated pages (Settings, Groups, Group detail). Use it instead of
+  re-typing the `rounded-2xl border ... shadow-sm` utility soup.
+- `components/ErrorBanner.jsx` is the **only** inline-error surface for
+  card-scoped retryable loads (`role="alert"` + optional **Try again**
+  button). Pair it with the per-slice "set state to `null` then bump
+  `reloadKey`" pattern used in Settings and GroupDetail.
 
 ## Theme system
 
@@ -108,13 +121,26 @@ update `brand-tokens.json` (and bump its `version` + `updatedAt`).**
     other than `success` is treated as invalid (defensive default). The
     success state auto-redirects to `/signin` after 10 s with a CTA
     fallback.)
-  - `/welcome` → `pages/Welcome.jsx` (guarded by `RequireAuth` **and**
-    `RequireSubscription`)
   - `/choose-plan` → `pages/ChoosePlan.jsx` (guarded by `RequireAuth`;
-    redirects active subscribers to `/welcome`)
-  - `/settings` → `pages/Settings.jsx` (guarded by `RequireAuth` **and**
-    `RequireSubscription`; subscription management hub — see "Backend
-    integration" below)
+    redirects active subscribers to `/app/dashboard`)
+  - `/app/*` → `components/AppShell.jsx` (parent route guarded by
+    `RequireAuth` + `RequireSubscription`; renders the left sidebar +
+    routed child). Children:
+    - `/app` → redirects to `/app/dashboard`
+    - `/app/dashboard` → `pages/Dashboard.jsx` (placeholder)
+    - `/app/transactions` → `pages/Transactions.jsx` (placeholder)
+    - `/app/reports` → `pages/Reports.jsx` (placeholder)
+    - `/app/budget` → `pages/Budget.jsx` (placeholder)
+    - `/app/splitter` → redirects to `/app/groups` (legacy)
+    - `/app/groups` → `pages/Groups.jsx` (list of groups + Create
+      modal — see "Backend integration" below)
+    - `/app/groups/:id` → `pages/GroupDetail.jsx` (details / members
+      / settings management)
+    - `/app/settings` → `pages/Settings.jsx` (subscription management
+      hub — see "Backend integration" below)
+  - `/welcome` → redirects to `/app/dashboard` (legacy; superseded by
+    the `/app/*` shell)
+  - `/settings` → redirects to `/app/settings` (legacy)
   - `*` → redirect to `/` (until a dedicated 404 page exists)
 - Use `<Link>` / `<NavLink>` for in-app navigation; never bare `<a href>` for
   internal routes.
@@ -184,7 +210,7 @@ src/
   `http://localhost:8080` (configurable via `VITE_API_BASE_URL`).
   Endpoint basepaths are unchanged — the gateway transparently proxies to
   the appropriate downstream service (e.g. `identity-management` for
-  `/api/auth/*` and `/api/users/*`). Future service endpoints (categories,
+  `/api/identity/auth/*` and `/api/identity/users/*`). Future service endpoints (categories,
   budgets, transactions, splits) will be added behind the same gateway
   and reached via the same `lib/apiClient.js` wrapper without any frontend
   routing change.
@@ -208,18 +234,21 @@ src/
   also wraps the full set of user-callable endpoints: `cancelSubscription`
   (`DELETE /me`), `updateAutoRenew` (`PATCH /me/auto-renew`),
   `requestProductChange` (`POST /me/change`, frontend currently always
-  sends `effectiveType: 'NEXT_BILLING_CYCLE'`), `cancelScheduledChange`
-  (`DELETE /me/change`), and `getSubscriptionHistory` (`GET /me/history`).
-  The `pages/Settings.jsx` page (guarded by `RequireAuth` +
+  sends `effectiveType: 'NEXT_BILLING_CYCLE'`), and
+  `cancelScheduledChange` (`DELETE /me/change`). The backend's
+  `UserSubscriptionResponse` now embeds the active subscription **and**
+  its `pendingChange` (or `null`) in a single payload, plus
+  `changeable` / `cancellable` capability flags — the frontend reads
+  those directly and no longer hits `/me/history`. The
+  `pages/Settings.jsx` page (guarded by `RequireAuth` +
   `RequireSubscription`, route `/settings`) is the single hub where users
-  view their current plan, toggle auto-renew (optimistic with rollback on
-  error), change plan at the next billing cycle, cancel, and review
-  recent subscription activity. Pending product changes are **inferred
-  from `/me/history`** (latest `CHANGE_SCHEDULED` not followed by
-  `CHANGE_CANCELLED` / `CHANGE_APPLIED`) until the backend exposes a
-  dedicated `GET /me/change` (tracked under `[Unreleased]` in the
-  changelog). Cancellation re-runs `/me`: if the backend kept the record
-  visible (`CANCELLED` until `expiresAt`) the page re-renders with a
+  view their current plan + any pending scheduled change, toggle
+  auto-renew (optimistic with rollback on error), change plan at the
+  next billing cycle, and cancel. The Change-plan and Cancel-subscription
+  buttons are hidden when the corresponding capability flag is `false`;
+  if both are `false` a short explainer replaces the buttons.
+  Cancellation re-runs `/me`: if the backend kept the record visible
+  (`CANCELLED` until `expiresAt`) the page re-renders with a
   cancelled-state banner; if it dropped, the user is routed to
   `/choose-plan`.
 - **User Settings API** (`/api/settings/*`) is wrapped in
@@ -232,6 +261,24 @@ src/
   `getSettings` call (with a retryable inline error on failure). Add a
   key to `KNOWN_SETTING_KEYS` and render it in `pages/Settings.jsx` to
   expose a new preference.
+- **Group Management API** (`/api/groups/*`) is wrapped in
+  `src/api/groups.js` (`listMyGroups`, `getGroup`, `createGroup`,
+  `updateGroup`, `deleteGroup`, `listMembers`, `addMember`,
+  `removeMember`, `leaveGroup`, `getGroupSettings`,
+  `updateGroupSettings`) plus a forward-compat
+  `KNOWN_GROUP_SETTING_KEYS` allow-list and `pickKnownGroupSettings()`
+  helper that mirror the user-settings pattern. Two routes consume it:
+  `/app/groups` (`pages/Groups.jsx`) lists every group the user is an
+  active member of and hosts the Create-group modal; `/app/groups/:id`
+  (`pages/GroupDetail.jsx`) renders three independent cards
+  (Details / Members / Settings) covering edit, delete, leave, add
+  member (UUID input — friend search is a follow-up), remove member,
+  and the empty-allow-list group settings. Domain rules surfaced in
+  the UI: every group has exactly one OWNER, ownership is fixed for
+  the lifetime of the group (owners cannot leave — they must delete
+  the group instead), and the owner row's **Remove** action is hidden
+  to honor the single-owner invariant (the backend currently does NOT
+  enforce this — see the changelog TODO).
 - The gateway MUST send `Access-Control-Allow-Credentials: true` with an
   explicit `Access-Control-Allow-Origin` (not `*`) for
   `credentials: 'include'` to work cross-origin in local dev.

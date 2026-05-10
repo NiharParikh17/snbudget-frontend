@@ -48,7 +48,7 @@ async function parseBody(response) {
  * Perform an HTTP request against the API.
  *
  * @param {'GET'|'POST'|'PUT'|'DELETE'} method
- * @param {string} path  Path beginning with `/`, e.g. `/api/auth/login`.
+ * @param {string} path  Path beginning with `/`, e.g. `/api/identity/auth/login`.
  * @param {{ body?: unknown, accessToken?: string|null, signal?: AbortSignal }} [opts]
  * @returns {Promise<unknown>} parsed JSON body or null
  */

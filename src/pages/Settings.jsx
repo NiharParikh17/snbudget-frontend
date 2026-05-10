@@ -1,50 +1,55 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Button from '../components/Button.jsx'
+import Card from '../components/Card.jsx'
+import ErrorBanner from '../components/ErrorBanner.jsx'
+import Modal from '../components/Modal.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { ApiError } from '../lib/apiClient.js'
 import {
   cancelScheduledChange,
   cancelSubscription,
   getCurrentSubscription,
-  getSubscriptionHistory,
   listProducts,
   requestProductChange,
-  updateAutoRenew,
 } from '../api/subscriptions.js'
 import { getSettings, pickKnown } from '../api/settings.js'
-import { compareProducts, formatPrice } from '../lib/price.js'
+import { compareProducts, formatAmount, formatPrice } from '../lib/price.js'
 
 /**
  * Settings — authenticated subscription-management hub.
  *
  * Surfaces every user-callable action on the Subscription Management API
- * (view current plan, toggle auto-renew, change plan, cancel, view event
- * history) plus a placeholder Preferences card backed by `getSettings`
- * with a frontend known-keys allow-list (currently empty — see
+ * (view current plan + any pending scheduled change, change plan, cancel)
+ * plus a placeholder Preferences card backed by `getSettings` with a
+ * frontend known-keys allow-list (currently empty — see
  * `src/api/settings.js`).
+ *
+ * UX rules:
+ *  - A pending scheduled change is surfaced as a **top-of-page notice**
+ *    (no buttons inside) so users see "what's next" immediately. The
+ *    notice points to the **Change scheduled plan** action below, which
+ *    opens the single tile that hosts every scheduled-plan operation
+ *    (swap target plan **or** cancel the scheduled change).
+ *  - Auto-renew is **not** a checkbox. The industry standard for
+ *    consumer subscriptions is to express "stop renewing" through a
+ *    single Cancel subscription action — that's what we do here. Cancel
+ *    is always allowed and, when a pending change is queued, the cancel
+ *    confirm panel makes it explicit that the scheduled change is
+ *    dropped too.
  *
  * Each card loads + errors + retries independently so a flake in one API
  * doesn't take the whole page down.
  *
- * Pending product change is **inferred from history** (latest
- * `CHANGE_SCHEDULED` not followed by `CHANGE_CANCELLED` / `CHANGE_APPLIED`)
- * because the backend does not yet expose `GET /me/change`. Tracked as a
- * TODO in `documents/changelog.md`.
+ * `GET /api/subscriptions/me` returns the current subscription **and**
+ * its `pendingChange` (or `null`) in a single call, so we no longer hit
+ * `/me/history` from this page.
  */
 
 const dateFmt = new Intl.DateTimeFormat(undefined, {
   year: 'numeric',
   month: 'short',
   day: 'numeric',
-})
-
-const dateTimeFmt = new Intl.DateTimeFormat(undefined, {
-  year: 'numeric',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
 })
 
 function formatDate(iso) {
@@ -54,42 +59,6 @@ function formatDate(iso) {
   return dateFmt.format(d)
 }
 
-function formatDateTime(iso) {
-  if (!iso) return null
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return null
-  return dateTimeFmt.format(d)
-}
-
-const EVENT_LABEL = {
-  SUBSCRIBED: 'Subscribed',
-  AUTO_RENEWED: 'Auto-renewed',
-  CANCELLED: 'Cancelled',
-  EXPIRED: 'Expired',
-  AMENDED: 'Updated',
-  CHANGE_SCHEDULED: 'Plan change scheduled',
-  CHANGE_CANCELLED: 'Plan change cancelled',
-  CHANGE_APPLIED: 'Plan change applied',
-}
-
-/**
- * Walk newest-first history and return the still-pending CHANGE_SCHEDULED
- * event, if any. A scheduled change is considered "live" until a more
- * recent CHANGE_CANCELLED, CHANGE_APPLIED, or AMENDED event supersedes it.
- */
-function findPendingScheduledChange(history) {
-  if (!Array.isArray(history)) return null
-  for (const event of history) {
-    if (
-      event?.eventType === 'CHANGE_CANCELLED' ||
-      event?.eventType === 'CHANGE_APPLIED'
-    ) {
-      return null
-    }
-    if (event?.eventType === 'CHANGE_SCHEDULED') return event
-  }
-  return null
-}
 
 function StatusBadge({ status }) {
   const styles =
@@ -107,31 +76,6 @@ function StatusBadge({ status }) {
   )
 }
 
-function Card({ children, className = '' }) {
-  return (
-    <section
-      className={`rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm ${className}`.trim()}
-    >
-      {children}
-    </section>
-  )
-}
-
-function ErrorBanner({ children, onRetry }) {
-  return (
-    <div
-      role="alert"
-      className="rounded-xl border border-red-200 dark:border-red-900 bg-red-50 dark:bg-red-950/40 px-4 py-3 text-sm text-red-700 dark:text-red-300 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
-    >
-      <span>{children}</span>
-      {onRetry ? (
-        <Button type="button" variant="secondary" onClick={onRetry}>
-          Try again
-        </Button>
-      ) : null}
-    </div>
-  )
-}
 
 function Settings() {
   const { accessToken, refreshSubscription } = useAuth()
@@ -142,9 +86,6 @@ function Settings() {
   const [subscriptionError, setSubscriptionError] = useState(null)
   const [subscriptionReloadKey, setSubscriptionReloadKey] = useState(0)
 
-  const [history, setHistory] = useState(null)
-  const [historyError, setHistoryError] = useState(null)
-  const [historyReloadKey, setHistoryReloadKey] = useState(0)
 
   const [settings, setSettings] = useState(null)
   const [settingsError, setSettingsError] = useState(null)
@@ -153,9 +94,6 @@ function Settings() {
   // UI mode for the in-page panels.
   const [mode, setMode] = useState('idle') // 'idle' | 'changing' | 'cancelling'
 
-  // Auto-renew interaction state.
-  const [autoRenewSubmitting, setAutoRenewSubmitting] = useState(false)
-  const [autoRenewError, setAutoRenewError] = useState(null)
 
   // Cancel-subscription interaction state.
   const [cancelSubmitting, setCancelSubmitting] = useState(false)
@@ -199,29 +137,6 @@ function Settings() {
     }
   }, [accessToken, subscriptionReloadKey])
 
-  useEffect(() => {
-    if (!accessToken) return undefined
-    let cancelled = false
-    ;(async () => {
-      try {
-        const list = await getSubscriptionHistory(accessToken)
-        if (cancelled) return
-        setHistory(Array.isArray(list) ? list : [])
-        setHistoryError(null)
-      } catch (err) {
-        if (cancelled) return
-        setHistoryError(
-          err instanceof ApiError
-            ? err.message
-            : 'Could not load your subscription activity.',
-        )
-        setHistory([])
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [accessToken, historyReloadKey])
 
   useEffect(() => {
     if (!accessToken) return undefined
@@ -275,10 +190,7 @@ function Settings() {
   // --- Derivations --------------------------------------------------------
 
   const sub = typeof subscription === 'object' ? subscription : null
-  const pendingChange = useMemo(
-    () => findPendingScheduledChange(history),
-    [history],
-  )
+  const pendingChange = sub?.pendingChange ?? null
   const otherProducts = useMemo(() => {
     if (!Array.isArray(products) || !sub?.product?.id) return []
     return [...products]
@@ -292,32 +204,17 @@ function Settings() {
       ? changeTargetId
       : otherProducts[0]?.id ?? null
 
+  // True when the user is "changing" to the plan they've already
+  // scheduled — submitting would be a no-op round-trip to the backend.
+  // Used to disable Schedule change AND to short-circuit the handler so
+  // even a programmatic call avoids the network request.
+  const isAlreadyScheduledTarget =
+    !!pendingChange &&
+    !!effectiveChangeTargetId &&
+    pendingChange.targetProduct?.id === effectiveChangeTargetId
+
   // --- Mutations ----------------------------------------------------------
 
-  const handleAutoRenewToggle = useCallback(async () => {
-    if (!sub || autoRenewSubmitting) return
-    const nextValue = !sub.autoRenew
-    // Optimistic update.
-    setAutoRenewSubmitting(true)
-    setAutoRenewError(null)
-    setSubscription({ ...sub, autoRenew: nextValue })
-    try {
-      const updated = await updateAutoRenew(accessToken, {
-        autoRenew: nextValue,
-      })
-      setSubscription(updated)
-    } catch (err) {
-      // Roll back.
-      setSubscription(sub)
-      setAutoRenewError(
-        err instanceof ApiError
-          ? err.message
-          : 'Could not update auto-renew. Please try again.',
-      )
-    } finally {
-      setAutoRenewSubmitting(false)
-    }
-  }, [accessToken, sub, autoRenewSubmitting])
 
   const handleConfirmCancel = useCallback(async () => {
     if (!sub || cancelSubmitting) return
@@ -333,7 +230,6 @@ function Settings() {
         if (fresh) {
           setSubscription(fresh)
           setMode('idle')
-          setHistoryReloadKey((k) => k + 1)
         } else {
           // No active subscription anymore — RequireSubscription will route
           // future renders, but we navigate explicitly for immediacy.
@@ -357,6 +253,15 @@ function Settings() {
 
   const handleConfirmChange = useCallback(async () => {
     if (!effectiveChangeTargetId || changeSubmitting) return
+    // No-op guard: the picked target is already the scheduled change.
+    // The button is also disabled in this case, but we belt-and-brace
+    // here so a programmatic / stale click never hits the backend.
+    if (isAlreadyScheduledTarget) {
+      setMode('idle')
+      setChangeError(null)
+      setChangeTargetId(null)
+      return
+    }
     setChangeSubmitting(true)
     setChangeError(null)
     try {
@@ -364,8 +269,8 @@ function Settings() {
         targetProductId: effectiveChangeTargetId,
         effectiveType: 'NEXT_BILLING_CYCLE',
       })
-      // Refresh history so the pending-change banner appears.
-      setHistoryReloadKey((k) => k + 1)
+      // Refresh the subscription so the pending-change banner appears.
+      setSubscriptionReloadKey((k) => k + 1)
       setMode('idle')
       setChangeTargetId(null)
     } catch (err) {
@@ -377,7 +282,7 @@ function Settings() {
     } finally {
       setChangeSubmitting(false)
     }
-  }, [accessToken, effectiveChangeTargetId, changeSubmitting])
+  }, [accessToken, effectiveChangeTargetId, changeSubmitting, isAlreadyScheduledTarget])
 
   const handleCancelScheduledChange = useCallback(async () => {
     if (cancelChangeSubmitting) return
@@ -385,7 +290,7 @@ function Settings() {
     setCancelChangeError(null)
     try {
       await cancelScheduledChange(accessToken)
-      setHistoryReloadKey((k) => k + 1)
+      setSubscriptionReloadKey((k) => k + 1)
     } catch (err) {
       setCancelChangeError(
         err instanceof ApiError
@@ -401,7 +306,6 @@ function Settings() {
 
   const subscriptionLoading = subscription === null
   const product = sub?.product
-  const isLifetime = product?.billingCycle === 'LIFETIME'
   const isCancelled = sub?.status === 'CANCELLED'
   const accessEndsOn = formatDate(sub?.expiresAt)
 
@@ -421,8 +325,44 @@ function Settings() {
           </p>
         </header>
 
+        {/* --- Top-of-page pending-change notice ----------------------
+            Surfaces the next billing-cycle plan switch front-and-center
+            so it's the first thing the user sees. Intentionally
+            actionless — every scheduled-plan operation lives in the
+            "Change scheduled plan" panel below. */}
+        {sub && pendingChange ? (
+          <div
+            role="status"
+            className="mt-8 rounded-2xl border border-violet-300 dark:border-violet-800 bg-violet-50 dark:bg-violet-900/30 px-5 py-4 shadow-sm"
+          >
+            <p className="text-xs font-semibold uppercase tracking-wider text-violet-700 dark:text-violet-300">
+              Plan change scheduled
+            </p>
+            <p className="mt-1 text-sm text-slate-900 dark:text-white">
+              Switching to{' '}
+              {pendingChange.targetProduct?.name ? (
+                <strong>{pendingChange.targetProduct.name}</strong>
+              ) : (
+                'a new plan'
+              )}
+              {pendingChange.targetProduct
+                ? ` (${formatPrice(pendingChange.targetProduct)})`
+                : ''}
+              {pendingChange.effectiveType === 'NEXT_BILLING_CYCLE'
+                ? ' at your next billing cycle.'
+                : pendingChange.effectiveDate
+                  ? ` on ${formatDate(pendingChange.effectiveDate)}.`
+                  : '.'}
+            </p>
+            <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+              Use <em>Change scheduled plan</em> below to swap or cancel
+              this change.
+            </p>
+          </div>
+        ) : null}
+
         {/* --- Subscription card ------------------------------------- */}
-        <div className="mt-10">
+        <div className={pendingChange ? 'mt-6' : 'mt-10'}>
           <Card>
             <div className="flex items-center justify-between gap-4">
               <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
@@ -484,7 +424,11 @@ function Settings() {
                   {sub.expiresAt ? (
                     <div>
                       <dt className="text-slate-500 dark:text-slate-400">
-                        {isCancelled ? 'Access ends' : 'Renews / ends'}
+                        {isCancelled
+                          ? 'Access ends'
+                          : sub.autoRenew
+                            ? 'Renews on'
+                            : 'Ends on'}
                       </dt>
                       <dd className="text-slate-800 dark:text-slate-100">
                         {formatDate(sub.expiresAt)}
@@ -503,66 +447,54 @@ function Settings() {
                   ) : null}
                 </dl>
 
-                {/* Auto-renew */}
-                {!isLifetime && !isCancelled ? (
-                  <div className="mt-6 flex items-center justify-between gap-4 rounded-xl border border-slate-200 dark:border-slate-800 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        Auto-renew
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400">
-                        {sub.autoRenew
-                          ? 'Your plan will renew automatically when it expires.'
-                          : 'Your plan will end on the renewal date.'}
-                      </p>
-                    </div>
-                    <label className="inline-flex items-center cursor-pointer select-none">
-                      <span className="sr-only">Toggle auto-renew</span>
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        aria-label="Auto-renew"
-                        checked={!!sub.autoRenew}
-                        disabled={autoRenewSubmitting}
-                        onChange={handleAutoRenewToggle}
-                        className="h-5 w-5 cursor-pointer accent-violet-600 disabled:cursor-not-allowed"
-                      />
-                    </label>
-                  </div>
-                ) : null}
-                {autoRenewError ? (
-                  <div className="mt-3">
-                    <ErrorBanner>{autoRenewError}</ErrorBanner>
-                  </div>
-                ) : null}
+                {/* Action buttons. The backend exposes `changeable` and
+                    `cancellable` per subscription; we hide an action when
+                    its flag is false (e.g. a LIFETIME plan typically has
+                    `cancellable: false` because there's nothing to
+                    cancel). If both are unavailable we render a short
+                    explainer in place of the buttons.
 
-                {/* Action buttons */}
+                    Cancellation is always allowed when `cancellable` is
+                    true — even with a `pendingChange` queued. The cancel
+                    confirm panel makes it clear that the scheduled
+                    change is dropped along with the subscription. */}
                 {!isCancelled ? (
-                  <div className="mt-6 flex flex-wrap gap-3">
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setMode('changing')
-                        setChangeError(null)
-                      }}
-                      disabled={mode !== 'idle'}
-                    >
-                      Change plan
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      onClick={() => {
-                        setMode('cancelling')
-                        setCancelError(null)
-                      }}
-                      disabled={mode !== 'idle'}
-                      className="!text-red-700 dark:!text-red-300 !border-red-200 dark:!border-red-900 hover:!bg-red-50 dark:hover:!bg-red-950/40"
-                    >
-                      Cancel subscription
-                    </Button>
-                  </div>
+                  sub.changeable === false && sub.cancellable === false ? (
+                    <p className="mt-6 text-sm text-slate-500 dark:text-slate-400">
+                      This plan can&apos;t be changed or cancelled.
+                    </p>
+                  ) : (
+                    <div className="mt-6 flex flex-wrap gap-3">
+                      {sub.changeable !== false ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setMode('changing')
+                            setChangeError(null)
+                            setCancelChangeError(null)
+                          }}
+                          disabled={mode !== 'idle'}
+                        >
+                          {pendingChange ? 'Change scheduled plan' : 'Change plan'}
+                        </Button>
+                      ) : null}
+                      {sub.cancellable !== false ? (
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          onClick={() => {
+                            setMode('cancelling')
+                            setCancelError(null)
+                          }}
+                          disabled={mode !== 'idle'}
+                          className="!text-red-700 dark:!text-red-300 !border-red-200 dark:!border-red-900 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+                        >
+                          Cancel subscription
+                        </Button>
+                      ) : null}
+                    </div>
+                  )
                 ) : (
                   <p className="mt-6 text-sm text-slate-600 dark:text-slate-300">
                     Your subscription is cancelled
@@ -576,146 +508,202 @@ function Settings() {
           </Card>
         </div>
 
-        {/* --- Pending scheduled change ----------------------------- */}
-        {pendingChange ? (
-          <div className="mt-6">
-            <Card>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Plan change scheduled
-              </h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                A plan change is queued and will take effect at your next
-                billing cycle.
-                {pendingChange.metadata
-                  ? ` Details: ${pendingChange.metadata}`
-                  : ''}
-              </p>
-              {cancelChangeError ? (
-                <div className="mt-3">
-                  <ErrorBanner>{cancelChangeError}</ErrorBanner>
-                </div>
-              ) : null}
-              <div className="mt-4">
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={handleCancelScheduledChange}
-                  disabled={cancelChangeSubmitting}
-                >
-                  {cancelChangeSubmitting
-                    ? 'Cancelling…'
-                    : 'Cancel scheduled change'}
-                </Button>
-              </div>
-            </Card>
-          </div>
-        ) : null}
+        {/* --- Change plan modal -----------------------------------
+            Rendered as a portal-mounted dialog (via `Modal`) instead of
+            an in-page tile so opening it doesn't shove the rest of the
+            page around. The product grid mirrors `/choose-plan` —
+            column cards with name + price + select state — so users see
+            the same shape they used at signup. */}
+        <Modal
+          open={mode === 'changing'}
+          onClose={() => {
+            if (changeSubmitting || cancelChangeSubmitting) return
+            setMode('idle')
+            setChangeError(null)
+            setCancelChangeError(null)
+            setChangeTargetId(null)
+          }}
+          title={pendingChange ? 'Change scheduled plan' : 'Change your plan'}
+          size="xl"
+          closeOnEscape={!changeSubmitting && !cancelChangeSubmitting}
+          closeOnBackdrop={!changeSubmitting && !cancelChangeSubmitting}
+        >
+          <p className="text-sm text-slate-600 dark:text-slate-300">
+            {pendingChange ? (
+              <>
+                Pick a different plan for your next billing cycle. This
+                will replace your currently scheduled change to{' '}
+                <strong>
+                  {pendingChange.targetProduct?.name ?? 'the selected plan'}
+                </strong>
+                . You keep your current plan until then.
+              </>
+            ) : (
+              'Pick a new plan. The change will take effect at your next billing cycle — you keep your current plan until then.'
+            )}
+          </p>
 
-        {/* --- Change plan panel ----------------------------------- */}
-        {mode === 'changing' ? (
-          <div className="mt-6">
-            <Card>
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
-                Change your plan
-              </h2>
-              <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">
-                Pick a new plan. The change will take effect at your next
-                billing cycle — you keep your current plan until then.
-              </p>
-
-              {products === null ? (
+          {products === null ? (
+            <div
+              className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+              aria-busy="true"
+              aria-live="polite"
+            >
+              {[0, 1, 2].map((i) => (
                 <div
+                  key={i}
                   data-testid="products-skeleton"
-                  className="mt-4 h-24 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"
-                  aria-busy="true"
+                  className="h-56 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 animate-pulse"
                 />
-              ) : productsError ? (
-                <div className="mt-4">
-                  <ErrorBanner
-                    onRetry={() => {
-                      setProducts(null)
-                      setProductsError(null)
-                      setProductsReloadKey((k) => k + 1)
-                    }}
+              ))}
+            </div>
+          ) : productsError ? (
+            <div className="mt-6">
+              <ErrorBanner
+                onRetry={() => {
+                  setProducts(null)
+                  setProductsError(null)
+                  setProductsReloadKey((k) => k + 1)
+                }}
+              >
+                {productsError}
+              </ErrorBanner>
+            </div>
+          ) : otherProducts.length === 0 ? (
+            <p className="mt-6 text-sm text-slate-600 dark:text-slate-300">
+              No other plans are available right now.
+            </p>
+          ) : (
+            <div
+              role="radiogroup"
+              aria-label="Available plans"
+              className="mt-6 grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+            >
+              {otherProducts.map((p) => {
+                const selected = p.id === effectiveChangeTargetId
+                return (
+                  <label
+                    key={p.id}
+                    className={`relative flex flex-col rounded-2xl border bg-white dark:bg-slate-900 p-5 cursor-pointer shadow-sm transition-all duration-200 focus-within:ring-2 focus-within:ring-violet-500 ${
+                      selected
+                        ? 'border-violet-500 ring-2 ring-violet-500/40 -translate-y-0.5'
+                        : 'border-slate-200 dark:border-slate-800 hover:-translate-y-0.5 hover:border-violet-300 dark:hover:border-violet-700'
+                    }`}
                   >
-                    {productsError}
-                  </ErrorBanner>
-                </div>
-              ) : otherProducts.length === 0 ? (
-                <p className="mt-4 text-sm text-slate-600 dark:text-slate-300">
-                  No other plans are available right now.
-                </p>
-              ) : (
-                <div
-                  role="radiogroup"
-                  aria-label="Available plans"
-                  className="mt-4 grid gap-3 sm:grid-cols-2"
-                >
-                  {otherProducts.map((p) => {
-                    const selected = p.id === effectiveChangeTargetId
-                    return (
-                      <label
-                        key={p.id}
-                        className={`flex flex-col gap-1 rounded-xl border p-4 cursor-pointer transition-all ${
-                          selected
-                            ? 'border-violet-500 ring-2 ring-violet-500/30 bg-violet-50/50 dark:bg-violet-900/20'
-                            : 'border-slate-200 dark:border-slate-800 hover:border-violet-300 dark:hover:border-violet-700'
-                        }`}
-                      >
-                        <input
-                          type="radio"
-                          name="change-target"
-                          value={p.id}
-                          checked={selected}
-                          onChange={() => setChangeTargetId(p.id)}
-                          className="sr-only"
-                        />
-                        <span className="font-semibold text-slate-900 dark:text-white">
-                          {p.name}
-                        </span>
-                        <span className="text-sm text-slate-600 dark:text-slate-300">
-                          {formatPrice(p)}
-                        </span>
-                      </label>
-                    )
-                  })}
-                </div>
-              )}
+                    <input
+                      type="radio"
+                      name="change-target"
+                      value={p.id}
+                      checked={selected}
+                      onChange={() => setChangeTargetId(p.id)}
+                      className="sr-only"
+                    />
+                    <span className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {p.name}
+                    </span>
+                    {p.description ? (
+                      <span className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                        {p.description}
+                      </span>
+                    ) : null}
+                    <span className="mt-4 flex items-baseline gap-1">
+                      <span className="text-3xl font-extrabold text-slate-900 dark:text-white">
+                        {formatAmount(p.price)}
+                      </span>
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {p.billingCycle === 'LIFETIME'
+                          ? 'one-time'
+                          : `/ ${formatPrice(p).split('/ ')[1] ?? ''}`}
+                      </span>
+                    </span>
+                    <span className="mt-1 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                      {p.billingCycle.toLowerCase()} billing
+                    </span>
+                    <span
+                      aria-hidden="true"
+                      className={`mt-5 inline-flex items-center justify-center w-full rounded-xl border px-3 py-1.5 text-xs font-semibold ${
+                        selected
+                          ? 'border-violet-600 bg-violet-50 dark:bg-violet-900/40 text-violet-700 dark:text-violet-200'
+                          : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'
+                      }`}
+                    >
+                      {selected ? 'Selected' : 'Select'}
+                    </span>
+                  </label>
+                )
+              })}
+            </div>
+          )}
 
-              {changeError ? (
-                <div className="mt-4">
-                  <ErrorBanner>{changeError}</ErrorBanner>
-                </div>
-              ) : null}
+          {changeError ? (
+            <div className="mt-5">
+              <ErrorBanner>{changeError}</ErrorBanner>
+            </div>
+          ) : null}
+          {cancelChangeError ? (
+            <div className="mt-5">
+              <ErrorBanner>{cancelChangeError}</ErrorBanner>
+            </div>
+          ) : null}
 
-              <div className="mt-5 flex flex-wrap gap-3">
-                <Button
-                  type="button"
-                  onClick={handleConfirmChange}
-                  disabled={
-                    changeSubmitting ||
-                    !effectiveChangeTargetId ||
-                    products === null
-                  }
-                >
-                  {changeSubmitting ? 'Scheduling…' : 'Schedule change'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={() => {
-                    setMode('idle')
-                    setChangeError(null)
-                    setChangeTargetId(null)
-                  }}
-                  disabled={changeSubmitting}
-                >
-                  Keep current plan
-                </Button>
-              </div>
-            </Card>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Button
+              type="button"
+              onClick={handleConfirmChange}
+              disabled={
+                changeSubmitting ||
+                !effectiveChangeTargetId ||
+                products === null ||
+                cancelChangeSubmitting ||
+                isAlreadyScheduledTarget
+              }
+              title={
+                isAlreadyScheduledTarget
+                  ? 'This plan is already scheduled — pick a different one to schedule a new change.'
+                  : undefined
+              }
+            >
+              {changeSubmitting ? 'Scheduling…' : 'Schedule change'}
+            </Button>
+            {isAlreadyScheduledTarget ? (
+              <p className="basis-full -mt-1 text-xs text-slate-500 dark:text-slate-400">
+                This plan is already scheduled for your next billing cycle.
+                Pick a different one to schedule a new change, or cancel
+                the scheduled change below.
+              </p>
+            ) : null}
+            {pendingChange ? (
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={async () => {
+                  await handleCancelScheduledChange()
+                  setMode('idle')
+                  setChangeTargetId(null)
+                }}
+                disabled={cancelChangeSubmitting || changeSubmitting}
+                className="!text-red-700 dark:!text-red-300 !border-red-200 dark:!border-red-900 hover:!bg-red-50 dark:hover:!bg-red-950/40"
+              >
+                {cancelChangeSubmitting
+                  ? 'Cancelling…'
+                  : 'Cancel scheduled change'}
+              </Button>
+            ) : null}
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                setMode('idle')
+                setChangeError(null)
+                setCancelChangeError(null)
+                setChangeTargetId(null)
+              }}
+              disabled={changeSubmitting || cancelChangeSubmitting}
+            >
+              {pendingChange ? 'Close' : 'Keep current plan'}
+            </Button>
           </div>
-        ) : null}
+        </Modal>
 
         {/* --- Cancel confirmation panel --------------------------- */}
         {mode === 'cancelling' ? (
@@ -732,6 +720,15 @@ function Settings() {
                 <li>Expense splitting with other users</li>
                 <li>Running balances and settle-up</li>
               </ul>
+              {pendingChange ? (
+                <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">
+                  Your scheduled change to{' '}
+                  <strong>
+                    {pendingChange.targetProduct?.name ?? 'a new plan'}
+                  </strong>{' '}
+                  will also be cancelled.
+                </p>
+              ) : null}
               <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
                 {accessEndsOn
                   ? `You'll keep access until ${accessEndsOn}. Your data is retained until you delete your account.`
@@ -771,60 +768,6 @@ function Settings() {
           </div>
         ) : null}
 
-        {/* --- Activity card --------------------------------------- */}
-        <div className="mt-6">
-          <Card>
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-              Activity
-            </h2>
-            {history === null ? (
-              <div
-                data-testid="history-skeleton"
-                className="mt-4 h-20 rounded-xl bg-slate-100 dark:bg-slate-800 animate-pulse"
-                aria-busy="true"
-              />
-            ) : historyError ? (
-              <div className="mt-4">
-                <ErrorBanner
-                  onRetry={() => {
-                    setHistory(null)
-                    setHistoryError(null)
-                    setHistoryReloadKey((k) => k + 1)
-                  }}
-                >
-                  {historyError}
-                </ErrorBanner>
-              </div>
-            ) : history.length === 0 ? (
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-                No activity yet.
-              </p>
-            ) : (
-              <ul className="mt-4 divide-y divide-slate-200 dark:divide-slate-800">
-                {history.slice(0, 10).map((event) => (
-                  <li
-                    key={event.id}
-                    className="py-3 flex items-start justify-between gap-4"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-slate-900 dark:text-white">
-                        {EVENT_LABEL[event.eventType] ?? event.eventType}
-                      </p>
-                      {event.metadata ? (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
-                          {event.metadata}
-                        </p>
-                      ) : null}
-                    </div>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 whitespace-nowrap">
-                      {formatDateTime(event.createdAt)}
-                    </p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Card>
-        </div>
 
         {/* --- Preferences card ------------------------------------ */}
         <div className="mt-6">

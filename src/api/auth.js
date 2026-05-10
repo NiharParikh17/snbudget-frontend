@@ -1,5 +1,5 @@
 /**
- * Wrappers for the `/api/auth/*` endpoints of the SNBudget Identity API.
+ * Wrappers for the `/api/identity/auth/*` endpoints of the SNBudget Identity API.
  * See the OpenAPI spec for the request/response shapes.
  */
 import { request } from '../lib/apiClient.js'

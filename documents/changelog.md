@@ -6,6 +6,366 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 ## [Unreleased]
 
 ### Added
+- **Group management is live.** Two new authenticated routes inside the
+  `/app/*` shell:
+  - `/app/groups` (`pages/Groups.jsx`) — list of every group the user
+    is an active member of, with an **Owner** badge for groups they
+    own, an empty state, retryable inline error, and a **New group**
+    modal (`name` + `description`). On create, the page navigates
+    straight into the new group's detail view.
+  - `/app/groups/:id` (`pages/GroupDetail.jsx`) — three independent
+    cards (Details / Members / Settings), each with its own
+    load/error/retry. Supports edit (any active member), delete
+    (owner only, two-step confirm with "this deletes all data"
+    warning), leave (non-owners only — owners see *"Ownership can't
+    be transferred — to step away from this group, delete it."*),
+    add member (paste UUID, format pre-checked client-side), and
+    remove member (per-row confirm; **hidden against the owner row**
+    and the current user's own row to honor the single-owner
+    invariant and steer self-removal through *Leave* instead). The
+    Settings card runs `getGroupSettings` and surfaces only keys in
+    `KNOWN_GROUP_SETTING_KEYS` (currently empty → empty-state copy),
+    matching the forward-compat policy used for user settings.
+- **`src/api/groups.js`** — wrappers for every endpoint in the
+  SNBudget Group Management API (`listMyGroups`, `getGroup`,
+  `createGroup`, `updateGroup`, `deleteGroup`, `listMembers`,
+  `addMember`, `removeMember`, `leaveGroup`, `getGroupSettings`,
+  `updateGroupSettings`) plus the `KNOWN_GROUP_SETTING_KEYS`
+  allow-list and `pickKnownGroupSettings()` helper. All routes go
+  through the existing `lib/apiClient.js` (gateway base
+  `/api/groups`).
+- **Shared UI primitives extracted from `Settings.jsx`**:
+  - `src/components/Card.jsx` — single source of truth for the
+    rounded-surface card shell used by authenticated pages.
+  - `src/components/ErrorBanner.jsx` — `role="alert"` inline error
+    with optional **Try again** button for card-scoped retryable
+    loads.
+  Settings now imports them; Groups and GroupDetail also consume
+  them so the two new pages don't repeat the utility soup.
+
+### Changed
+- **About page** — "Where we are today" now mentions group
+  management (create / edit / delete groups, add or remove members,
+  leave a group) alongside the existing auth + subscription flows.
+- **Architecture doc** updated for `src/api/groups.js`, the new
+  `/app/groups` + `/app/groups/:id` route entries, and the new
+  shared `Card` / `ErrorBanner` primitives.
+- **Domain model** gained `Group`, `GroupMember`, and `GroupSetting`
+  entities, including the explicit invariant *"every group has
+  exactly one OWNER; ownership is fixed for the lifetime of the
+  group and cannot be transferred"*.
+- **Roadmap** Phase 2 ticks the Friends/Groups item as in-progress.
+
+### Tests
+- `src/api/groups.test.js` (13 cases — one per wrapper +
+  `pickKnownGroupSettings` allow-list filtering).
+- `src/components/Card.test.jsx` (2) and
+  `src/components/ErrorBanner.test.jsx` (3).
+- `src/pages/Groups.test.jsx` rewritten (5 cases: list with owner
+  badge, empty state, error + retry, create-and-navigate, blank
+  name validation).
+- `src/pages/GroupDetail.test.jsx` (9 cases: parallel load shows
+  owner-only Delete, non-owner sees Leave, details retry, edit
+  flow, owner-delete navigates to list, non-owner-leave navigates
+  to list, Remove hidden on owner + self rows, invalid UUID
+  rejected, valid UUID adds member and refreshes the list).
+- `App.test.jsx` gains a `/app/groups/:id` redirect-when-anonymous
+  case.
+- Total suite: **209 tests** (was 177).
+
+### Out of scope (intentional, not deferred)
+- **Ownership transfer / co-owners.** A group has exactly one
+  owner for life. To step away, the owner must delete the group.
+  This is enforced UI-side and called out in the domain model.
+
+### TODO (under [Unreleased])
+- **Server-side single-owner enforcement on member removal.** The
+  backend currently allows any active member to remove any other
+  member, including the owner. The UI hides the **Remove** action
+  on the owner row, but a malicious member could still POST the
+  request directly. Track an "OWNER row is non-removable" rule on
+  the backend.
+- **Friend search for Add member.** The UI accepts a pasted user
+  UUID with a client-side format check. Replace with email /
+  handle lookup as soon as a search endpoint exists, then drop
+  the UUID input.
+- **Group settings UI.** `KNOWN_GROUP_SETTING_KEYS` is empty.
+  Add the first preference (likely `CURRENCY`) and wire a control
+  in the Settings card.
+
+### Security
+- No new runtime dependencies — only native `fetch`. `npm audit`
+  to be re-verified after this change is applied.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Renamed the `Splitter` tab to `Groups`.** `pages/Splitter.jsx` →
+  `pages/Groups.jsx` (and its test); `PRIMARY_TABS` entry updated to
+  `{ to: '/app/groups', label: 'Groups' }` (icon unchanged); App route
+  is now `/app/groups`. A legacy `<Navigate>` from `/app/splitter` →
+  `/app/groups` keeps any in-flight links working.
+- **Header and Footer go full-width when signed in.** Previously both
+  used a centered `max-w-6xl` container, which left a large empty
+  margin to the right of the new sidebar and made the logo + actions
+  visually drift away from the screen edges. While `useAuth().status`
+  is `'authenticated'`, the chrome now drops the max-width cap so the
+  Logo sits flush left and the **Settings** / **Sign out** buttons
+  (header) and **About / Privacy / Terms** + copyright (footer) sit
+  flush right. Public / signed-out pages keep the existing centered
+  layout so the marketing surfaces are unchanged.
+- `Footer.jsx` now consumes `useAuth()`; its test switched to
+  `renderWithProviders` to wrap it in `AuthProvider` (matching how
+  `Header.test.jsx` already renders).
+
+### Added
+- **Authenticated app shell with left-sidebar tabs.** New
+  `components/AppShell.jsx` wraps every `/app/*` route with the
+  existing `RequireAuth` + `RequireSubscription` guards and renders
+  `components/Sidebar.jsx` next to a routed `<Outlet/>`. The sidebar
+  is a single `nav` (aria-label "Primary") of `NavLink`s with violet
+  active state; on viewports below `md:` it is hidden behind a "Menu"
+  toggle that opens a slide-over with a backdrop and closes on link
+  tap or backdrop click.
+- **Five primary tabs** wired to placeholder pages (each renders a
+  heading + "coming soon" stub):
+  - `/app/dashboard` → `pages/Dashboard.jsx` (home icon)
+  - `/app/transactions` → `pages/Transactions.jsx` (credit-card icon)
+  - `/app/reports` → `pages/Reports.jsx` (pie-chart icon)
+  - `/app/budget` → `pages/Budget.jsx` (wallet icon)
+  - `/app/splitter` → `pages/Splitter.jsx` (users icon)
+  Plus `/app` → redirects to `/app/dashboard`, and `/app/settings`
+  now hosts the existing Settings page inside the same shell.
+- **Tab registry** at `src/components/primaryTabs.js` (`PRIMARY_TABS`)
+  — single source of truth for tab order, route, label, and icon.
+  `Sidebar` derives its rendered list from this array; add or reorder
+  tabs by editing the array only.
+- **Hand-rolled icon components** under `src/components/icons/`:
+  `IconHome`, `IconCreditCard`, `IconPieChart`, `IconWallet`,
+  `IconUsers`. Each is a tiny stateless component using `currentColor`
+  + `aria-hidden`, accepts `className`, and ships with a parametrised
+  smoke test.
+
+### Changed
+- **Post-signin landing is now `/app/dashboard`** (was `/welcome`).
+  `pages/SignIn.jsx` and `pages/ChoosePlan.jsx` updated. The Header's
+  Settings link now points to `/app/settings`.
+- **Architecture doc** updated for the new `AppShell`, `Sidebar`,
+  `primaryTabs`, `icons/` module, and the `/app/*` nested-route table.
+- **Roadmap** Phase 0 ticks the new authenticated app shell item.
+
+### Removed
+- **`pages/Welcome.jsx`** (and its test) — the post-onboarding
+  placeholder is replaced by the real `Dashboard` tab inside the app
+  shell. `/welcome` and the legacy top-level `/settings` now resolve
+  to `<Navigate>` redirects (`/app/dashboard` and `/app/settings`
+  respectively) so any stale links keep working.
+
+### Tests
+- `Sidebar.test.jsx` (4 cases: 5 tabs render with correct hrefs, an
+  svg per tab, active-tab styling, `onNavigate` fires on click).
+- `AppShell.test.jsx` (4 cases: anonymous → `/signin`, unsubscribed
+  → `/choose-plan`, authorised renders sidebar + outlet, mobile
+  drawer open/close).
+- `icons/icons.test.jsx` (10 parametrised cases — render +
+  `className` pass-through for all 5 icons).
+- `Dashboard.test.jsx`, `Transactions.test.jsx`, `Reports.test.jsx`,
+  `Budget.test.jsx`, `Splitter.test.jsx` (1 case each — heading +
+  "coming soon" stub).
+- `ChoosePlan.test.jsx` updated to assert `/app/dashboard` instead of
+  `/welcome` for the post-subscribe and active-subscriber paths.
+- Total suite: **177 tests** (was 155).
+
+### Security
+- No new runtime dependencies. `npm audit` reports **0
+  vulnerabilities**; `npm outdated` is clean.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Change-plan modal — no-op submit guard.** When a `pendingChange`
+  is already queued, the *Change scheduled plan* modal pre-selects the
+  scheduled target by default (it's the only "other" product in the
+  common 2-plan catalog). Submitting that selection would be a no-op
+  round-trip. The page now:
+  1. **Disables Schedule change** whenever the picked target equals
+     `pendingChange.targetProduct.id`, with a helper line
+     *"This plan is already scheduled for your next billing cycle.
+     Pick a different one to schedule a new change, or cancel the
+     scheduled change below."* and a matching `title` tooltip.
+  2. **Short-circuits `handleConfirmChange`** in the same case so a
+     programmatic / stale click never hits
+     `POST /api/subscriptions/me/change` — belt-and-brace defence on
+     top of the disabled button. The modal just closes.
+
+### Tests
+- `Settings.test.jsx` — new case asserting that with a queued change
+  to Pro Yearly and Pro Yearly pre-selected, *Schedule change* is
+  disabled, the explainer is rendered, and `requestProductChange` is
+  never called. Net Settings test count: 22 (was 21). Total suite:
+  **155 tests** (was 154).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Added
+- **`Modal` component** (`src/components/Modal.jsx`) — accessible
+  dialog primitive shared across the app. Portal-mounted on
+  `document.body`, locks body scroll while open, supports ESC and
+  backdrop dismissal (each independently opt-out-able), wires the
+  heading to the dialog via `aria-labelledby`, and moves focus inside
+  on open. Sizes: `sm | md | lg | xl`. Tests: 7 cases in
+  `Modal.test.jsx` (closed = nothing rendered, open shape, close-button
+  / ESC / backdrop dismissal, ESC opt-out, body scroll lock + restore).
+
+### Changed
+- **Settings — Change plan is now a modal**, not an in-page tile.
+  Previously, opening *Change plan* expanded a `Card` below the
+  Subscription card and pushed everything down, which felt jumpy.
+  Now it opens a portal-mounted `Modal` ("Change your plan" / "Change
+  scheduled plan") so the page stays still.
+- **Plan picker grid mirrors `/choose-plan`** — column-style
+  product cards (`grid-cols-1 sm:grid-cols-2 lg:grid-cols-3`) with
+  big price, billing-cycle caption, and a Selected/Select pill — so
+  users see the same shape they used at signup. The cancel-scheduled
+  -change action stays inside this modal (the single home for
+  scheduled-plan ops).
+
+### Tests
+- `Settings.test.jsx` — the existing change-plan happy-path test now
+  asserts a `role="dialog"` with `aria-modal="true"` opens, and a new
+  case verifies the modal closes when the close (×) button is clicked.
+  Net Settings test count: 21 (was 20). Total suite: **154 tests**
+  (was 146).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Settings — subscription card UX overhaul** based on user feedback
+  that "two cancel buttons" (one inline + one in the action row, even
+  when one was disabled) was confusing. The page now follows three
+  clearer rules:
+  1. **Pending plan change is a top-of-page banner** (`role="status"`,
+     violet card above the Subscription card) reading e.g. *"Plan
+     change scheduled — Switching to **Pro Yearly** ($99 / year) at
+     your next billing cycle."* The banner is intentionally
+     **action-less**: it points users at *Change scheduled plan*
+     below.
+  2. **The "Change scheduled plan" tile is now the single home for
+     every scheduled-plan operation.** It hosts both *Schedule change*
+     (swap target plan) **and** *Cancel scheduled change*. The inline
+     pending row inside the Subscription card is gone, eliminating the
+     duplicate Cancel surface.
+  3. **Cancel subscription is always allowed** when `cancellable=true`
+     — even with a `pendingChange` queued. The cancel-confirm panel
+     adds an amber line: *"Your scheduled change to **X** will also be
+     cancelled."* This reverses the prior "must cancel scheduled
+     change first" rule, matching the user's product call that
+     cancelling an active subscription cancels its future plans too.
+- **Auto-renew is no longer a checkbox / switch.** Industry standard
+  for consumer subscriptions (Apple, Netflix, Spotify) is to express
+  "stop renewing" through a single Cancel action, so the dedicated
+  Auto-renew tile is removed. The renewal date in the Subscription
+  card is now labelled **"Renews on"** (auto-renew on) or **"Ends
+  on"** (auto-renew off) so the renewal posture is still visible at a
+  glance — but the only off-switch is *Cancel subscription*.
+
+### Removed
+- Auto-renew toggle tile (`role="switch"` checkbox) on `/settings`.
+  The `updateAutoRenew` API wrapper stays in `src/api/subscriptions.js`
+  for future use but is no longer imported by the Settings page.
+- Inline "Cancel scheduled change" button inside the Subscription
+  card's pending-change row (the row itself is gone — superseded by
+  the top banner + the Change scheduled plan tile).
+- "To cancel your subscription, cancel the scheduled plan change
+  first." hint and the disabled-cancel state that went with it.
+
+### Tests
+- `Settings.test.jsx` — replaced the auto-renew toggle, blocked-cancel,
+  and inline pending-row tests with new ones covering the new UX:
+  no auto-renew control rendered, "Renews on" / "Ends on" labels,
+  top-of-page pending banner with no inline buttons, Cancel
+  subscription stays enabled with a pendingChange, the Change
+  scheduled plan tile hosts the cancel-scheduled-change button, and
+  the cancel-confirm panel warns that the scheduled change is
+  dropped. Net Settings test count: 20 (was 18). Total suite:
+  **146 tests** (was 144).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Pending plan change is now an inline row in the Subscription card**,
+  not a separate "Plan change scheduled" card. Reads e.g. *"Switching to
+  **Pro Yearly** ($99 / year) at your next billing cycle."* with a
+  *"Cancel scheduled change"* ghost button right next to the rest of
+  the subscription details.
+- **Cancellation rule** — while a `pendingChange` exists, the **Cancel
+  subscription** button is disabled and a hint reads *"To cancel your
+  subscription, cancel the scheduled plan change first."* This avoids a
+  confusing 4xx from the backend and matches the new product rule.
+- **Change plan** — the action's label flips to *"Change scheduled
+  plan"* when one is already queued, and the in-page panel explains
+  that submitting will replace the existing scheduled change. The
+  `requestProductChange` endpoint is unchanged — the backend transparently
+  cancels any prior pending change and enrolls the new target.
+
+### Removed
+- The standalone *Plan change scheduled* card on `/settings`.
+
+### Tests
+- `Settings.test.jsx` — replaced the heading-based pending-change
+  assertions with text/button-based ones; added 2 new cases:
+  Cancel-subscription disabled when a pendingChange exists (with the
+  visible hint), and Change-plan label flips to "Change scheduled plan".
+  Net Settings test count: 18 (was 16).
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Changed
+- **Pending scheduled change now read directly from `/me`** — the
+  Subscription Management API now embeds the active subscription's
+  `pendingChange` (or `null`) in `UserSubscriptionResponse`, so the
+  Settings page reads it inline and no longer infers it from history.
+  Cancelling or scheduling a change now refreshes the subscription so
+  the UI updates immediately. Resolves the prior TODO calling for
+  `GET /me/change`.
+
+### Removed
+- **`getSubscriptionHistory` wrapper and `/me/history` call** — the
+  Activity card on `/settings` is gone; subscription history is no
+  longer surfaced in the UI. `src/api/subscriptions.js` no longer
+  exports `getSubscriptionHistory` and `subscriptions.test.js` drops
+  the matching case.
+- **`SubscriptionEvent` domain entity** — no longer consumed by the
+  frontend. `documents/domain-model.md` updated.
+
+---
+
+## [Unreleased — earlier this iteration]
+
+### Added
+- **Per-subscription `changeable` / `cancellable` flags** — the
+  Subscription Management API now returns two booleans on
+  `UserSubscriptionResponse`. The Settings page hides the **Change plan**
+  button when `changeable === false` and the **Cancel subscription**
+  button when `cancellable === false`. If both are false, a short
+  "This plan can't be changed or cancelled." note is rendered in place
+  of the buttons. JSDoc on `getCurrentSubscription` updated.
+  Tests: 3 new cases in `Settings.test.jsx` (Change-plan hidden,
+  Cancel-subscription hidden, both-false explainer).
+
+### Added
 - **Settings page (`/settings`)** — new authenticated route (guarded by
   `RequireAuth` + `RequireSubscription`) that is the single subscription-
   management hub. Surfaces:
@@ -187,7 +547,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   (4 tests), `ChoosePlan.test.jsx` (9 tests). Existing
   `AuthContext.test.jsx` extended with subscription-bootstrap +
   fail-closed cases (the `logout` test was rewritten to find the
-  `/api/auth/logout` call by URL match because subscription `/me` now
+  `/api/identity/auth/logout` call by URL match because subscription `/me` now
   shifts the call index). `App.test.jsx` gains a `/choose-plan`
   redirect-when-anonymous case.
 
@@ -228,8 +588,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   API gateway at `http://localhost:8080` (was `http://localhost:8081`
   pointing directly at the `identity-management` service). Updated the
   `DEFAULT_BASE_URL` fallback in `src/lib/apiClient.js` and the example
-  value + comment in `.env.example`. Endpoint basepaths (`/api/auth/*`,
-  `/api/users/*`, etc.) are unchanged. `documents/architecture.md`
+  value + comment in `.env.example`. Endpoint basepaths (`/api/identity/auth/*`,
+  `/api/identity/users/*`, etc.) are unchanged. `documents/architecture.md`
   "Backend integration" section updated to document the gateway topology.
   > ⚠️ If you have a local `.env` or `.env.local` file with
   > `VITE_API_BASE_URL=http://localhost:8081` you must update it to
@@ -275,8 +635,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
 ### Added
 - **Authentication UI** — `/signup` and `/signin` pages backed by the
-  SNBudget Identity API (`POST /api/users`, `POST /api/auth/login`,
-  `POST /api/auth/refresh`, `POST /api/auth/logout`). Registration sends
+  SNBudget Identity API (`POST /api/identity/users`, `POST /api/identity/auth/login`,
+  `POST /api/identity/auth/refresh`, `POST /api/identity/auth/logout`). Registration sends
   the user to `/signin?registered=1` with a "check your email" banner
   (verification is enforced by the backend; the UI surfaces whatever
   message the API returns). After login the user lands on a temporary

@@ -1,5 +1,5 @@
 /**
- * Wrappers for the `/api/users` endpoints of the SNBudget Identity API.
+ * Wrappers for the `/api/identity/users` endpoints of the SNBudget Identity API.
  * Only the public registration endpoint is implemented for now —
  * profile read/update/delete will be added when the dashboard lands.
  */

@@ -12,11 +12,11 @@ import { compareProducts, formatAmount, formatPrice } from '../lib/price.js'
  * The user picks a plan and clicks **Continue**, which calls
  * `POST /api/subscriptions` with the selected product. There is no payment
  * step yet — the backend simply enrolls the caller. On success we refresh
- * `subscriptionStatus` on the auth context and navigate to `/welcome`,
+ * `subscriptionStatus` on the auth context and navigate to `/app/dashboard`,
  * which is the same destination as users who already had an active
  * subscription.
  *
- * Active subscribers are bounced back to `/welcome`; anonymous users are
+ * Active subscribers are bounced back to `/app/dashboard`; anonymous users are
  * filtered out one level up by `RequireAuth`.
  */
 function ChoosePlan() {
@@ -138,7 +138,7 @@ function ChoosePlan() {
       // from `'none'` → `'active'` before we navigate. Without this the
       // RequireSubscription guard would bounce the user right back here.
       await refreshSubscription()
-      navigate('/welcome', { replace: true })
+      navigate('/app/dashboard', { replace: true })
     } catch (err) {
       setSubmitError(
         err instanceof ApiError
@@ -151,7 +151,7 @@ function ChoosePlan() {
 
   // Active subscribers should never see this screen.
   if (subscriptionStatus === 'active') {
-    return <Navigate to="/welcome" replace />
+    return <Navigate to="/app/dashboard" replace />
   }
 
   return (

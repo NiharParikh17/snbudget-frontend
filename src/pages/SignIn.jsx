@@ -35,7 +35,7 @@ function SignIn() {
     setSubmitting(true)
     try {
       await login({ identifier: identifier.trim(), password })
-      const from = location.state?.from?.pathname || '/welcome'
+      const from = location.state?.from?.pathname || '/app/dashboard'
       navigate(from, { replace: true })
     } catch (err) {
       if (err instanceof ApiError) {
