@@ -20,7 +20,7 @@ import * as subscriptionsApi from '../api/subscriptions.js'
  *   XSS exfiltration). The short-lived access token (15 min TTL per the spec)
  *   lives only in this React state — never localStorage / sessionStorage —
  *   so an XSS payload cannot steal a long-lived credential. On a hard reload
- *   we silently call `/api/auth/refresh` to mint a fresh access token from
+ *   we silently call `/api/identity/auth/refresh` to mint a fresh access token from
  *   the cookie. Anywhere this token is consumed should treat it as opaque.
  *
  * Status machine:

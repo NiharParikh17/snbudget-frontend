@@ -21,7 +21,11 @@ function Header() {
 
   return (
     <header className="sticky top-0 z-20 w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/75 dark:bg-slate-900/75 backdrop-blur-md">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div
+        className={`${
+          status === 'authenticated' ? 'w-full' : 'max-w-6xl mx-auto'
+        } px-4 sm:px-6 h-16 flex items-center justify-between`}
+      >
         <Link
           to="/"
           className="focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-lg"
@@ -33,8 +37,8 @@ function Header() {
         <nav aria-label="Account" className="flex items-center gap-2">
           {status === 'authenticated' ? (
             <>
-              <Button as={Link} to="/welcome" variant="ghost">
-                My account
+              <Button as={Link} to="/app/settings" variant="ghost">
+                Settings
               </Button>
               <Button
                 type="button"

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import Logo from './Logo.jsx'
+import { useAuth } from '../context/AuthContext.jsx'
 
 const links = [
   { to: '/about', label: 'About' },
@@ -9,10 +10,16 @@ const links = [
 
 function Footer() {
   const year = new Date().getFullYear()
+  const { status } = useAuth()
+  const wide = status === 'authenticated'
 
   return (
     <footer className="mt-auto border-t border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div
+        className={`${
+          wide ? 'w-full' : 'max-w-6xl mx-auto'
+        } px-4 sm:px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4`}
+      >
         <Link to="/" aria-label="SNBudget home" className="focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 rounded-lg">
           <Logo />
         </Link>

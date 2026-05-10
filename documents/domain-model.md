@@ -25,11 +25,59 @@ The caller's link to a `SubscriptionProduct`. Each user has at most one
 - `status` — `ACTIVE | CANCELLED | EXPIRED`
 - `autoRenew` (forced `false` for `LIFETIME`)
 - `startedAt`, `expiresAt` (null for `LIFETIME`), `cancelledAt`
+- `changeable` — backend-computed flag; if `false`, the frontend hides the
+  "Change plan" action.
+- `cancellable` — backend-computed flag; if `false`, the frontend hides the
+  "Cancel subscription" action. (Both flags `false` ⇒ the Settings page
+  shows a short "this plan can't be changed or cancelled" note in place
+  of the buttons.)
+- `pendingChange` — embedded `ScheduledProductChange` (or `null`) when a
+  product change is queued. Source of the "Plan change scheduled" banner
+  on `/settings`.
 
 The frontend gates all authenticated pages on a non-null `ACTIVE`
 subscription. `GET /api/subscriptions/me` returns `204 No Content` when
 the user has no active subscription, in which case the user is sent to
 `/choose-plan`.
+
+Cancellation transitions the subscription to `CANCELLED` but the user
+typically retains access until `expiresAt`; the `/settings` page surfaces
+this state with a "you'll keep access until …" banner. If the backend
+instead drops the record (so `/me` returns 204), the user is routed to
+`/choose-plan`.
+
+### ScheduledProductChange
+
+A queued plan change against a `UserSubscription`. The active subscription
+embeds the latest pending change inline as
+`UserSubscription.pendingChange` (or `null` when none is scheduled), so
+the frontend reads it directly from `GET /api/subscriptions/me`.
+
+- `id`, `targetProduct` (`SubscriptionProduct`)
+- `effectiveType` — `IMMEDIATE | ON_DATE | NEXT_BILLING_CYCLE | NEXT_BILLING_CYCLE_AFTER_DATE`
+  (frontend currently only sends `NEXT_BILLING_CYCLE`)
+- `effectiveDate` (required for `ON_DATE` / `NEXT_BILLING_CYCLE_AFTER_DATE`)
+- `status` — `PENDING | APPLIED | CANCELLED`
+- `createdAt`
+
+### UserSetting
+
+A single key/value preference for a `User`. Owned by the user-settings
+service.
+
+- `key` — matches a backend `SettingKey` enum constant (e.g. `THEME`,
+  `DEFAULT_CURRENCY`, `BUDGET_ALERT_THRESHOLD_PERCENTAGE`,
+  `NOTIFICATIONS_EMAIL_ENABLED`)
+- `value` — current string value (falls back to `defaultValue` if unset)
+- `defaultValue` — declared default for resets
+- `valueType` — `BOOLEAN | INTEGER | DECIMAL | STRING | ENUM`
+- `allowedValues` — non-empty for `BOOLEAN` and `ENUM`; empty for the
+  free-form types
+
+The backend always returns every known key; the frontend keeps its own
+allow-list (`KNOWN_SETTING_KEYS` in `src/api/settings.js`, currently
+empty) and silently ignores keys it doesn't yet render so the backend can
+roll out new settings before UI for them ships.
 
 ### User
 
@@ -37,6 +85,47 @@ the user has no active subscription, in which case the user is sent to
 - `displayName`
 - `email`
 - `defaultCurrency` (e.g. `"USD"`)
+
+### Group
+
+A named collection of users that share expenses (roommates, a trip, a
+recurring split). Owned by the group-management service.
+
+- `id`
+- `name`, `description`
+- `ownerId` — exactly one owner per group, **fixed for the lifetime of
+  the group**. Ownership cannot be transferred and there is no concept
+  of co-owners. To step away, the owner must delete the group.
+- `createdAt`, `updatedAt`
+
+### GroupMember
+
+A user's membership in a `Group`. The group-management service models
+re-joins as new active rows rather than mutating an old one.
+
+- `id`, `groupId`, `userId`
+- `role` — `OWNER | MEMBER`. Exactly one `OWNER` row per group.
+- `status` — `ACTIVE | LEFT | REMOVED`
+- `joinedAt`, `updatedAt`
+
+The frontend lists active members via `GET /api/groups/{id}/members` and
+hides the **Remove** action against the owner row to honor the
+single-owner invariant. The backend currently allows any active member
+to remove any other member (including the owner), so the rule is UI-only
+today — see the changelog TODO for the matching server-side ask.
+
+### GroupSetting
+
+A single key/value preference for a `Group`. Owned by the
+group-management service.
+
+- `key` — matches a backend `GroupSettingKey` enum constant
+- `value`, `defaultValue`, `valueType`, `allowedValues` — same shape as
+  `UserSetting`
+
+The backend always returns every known key; the frontend keeps its own
+allow-list (`KNOWN_GROUP_SETTING_KEYS` in `src/api/groups.js`, currently
+empty) and silently drops unknown keys via `pickKnownGroupSettings()`.
 
 ### Account (optional, future)
 

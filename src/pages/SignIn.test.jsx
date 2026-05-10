@@ -38,7 +38,7 @@ describe('SignIn page', () => {
     expect(await screen.findByText(/enter your email or username/i)).toBeInTheDocument()
     expect(screen.getByText(/enter your password/i)).toBeInTheDocument()
     // No login attempt should have happened
-    expect(globalThis.fetch.mock.calls.find((c) => c[0].includes('/api/auth/login'))).toBeUndefined()
+    expect(globalThis.fetch.mock.calls.find((c) => c[0].includes('/api/identity/auth/login'))).toBeUndefined()
   })
 
   it('surfaces server errors verbatim (e.g. email not verified)', async () => {
@@ -79,7 +79,7 @@ describe('SignIn page', () => {
     })
 
     await waitFor(() => {
-      const loginCall = globalThis.fetch.mock.calls.find((c) => c[0].includes('/api/auth/login'))
+      const loginCall = globalThis.fetch.mock.calls.find((c) => c[0].includes('/api/identity/auth/login'))
       expect(loginCall).toBeDefined()
       expect(JSON.parse(loginCall[1].body)).toEqual({
         identifier: 'jane@example.com',

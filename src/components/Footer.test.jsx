@@ -1,14 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { screen, within } from '@testing-library/react'
 import Footer from './Footer.jsx'
+import { renderWithProviders } from '../test/renderWithProviders.jsx'
 
 function renderFooter() {
-  return render(
-    <MemoryRouter>
-      <Footer />
-    </MemoryRouter>,
-  )
+  return renderWithProviders(<Footer />)
 }
 
 describe('Footer', () => {

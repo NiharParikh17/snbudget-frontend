@@ -132,8 +132,13 @@ function About() {
             users are asked to <strong>choose a subscription plan</strong>
             and are enrolled immediately on the backend — no payment is
             collected yet (checkout will be added before billing goes
-            live). The budgeting and
-            splitting features are next; see the{' '}
+            live). A <strong>Settings page</strong> lets you review your
+            plan, change to a different plan at the next billing cycle,
+            and cancel your subscription. <strong>Group management</strong>
+            is also live: create groups, edit or delete your own groups,
+            add and remove members, and leave groups you don&apos;t own.
+            Splits, balances, and the budgeting features are next; see
+            the{' '}
             <Link
               to="/"
               className="text-violet-600 dark:text-violet-400 underline"

@@ -12,6 +12,9 @@
 - [x] AI workflow instructions (`.github/copilot-instructions.md`)
 - [x] Basic app shell (Header with Sign in / Sign up, static Footer, Layout
       wrapper, unauthenticated Home page)
+- [x] Authenticated app shell (`/app/*`) with left sidebar + tabs
+      (Dashboard, Transactions, Reports, Budget, Groups) — placeholder
+      pages, real content lands in Phases 1–3.
 - [x] Routing (`react-router-dom` v7) with `/` and `/about` routes
 - [x] About page (`/about`) — kept in sync per AI workflow rule 3b
 - [x] Privacy page (`/privacy`) — pre-launch statement of intent
@@ -27,7 +30,11 @@
 
 ## Phase 2 — Splits (still local)
 
-- [ ] "Friends" list (mock users)
+- [~] "Friends" / Groups — group CRUD, membership management, and
+      group settings shipped against the SNBudget Group Management API
+      (`/app/groups` list + `/app/groups/:id` detail). Friend-search
+      by email/handle is pending; for now members are added by pasting
+      a user UUID.
 - [ ] Create split (equal, shares, percent, exact)
 - [ ] Split materializes per-participant transactions
 - [ ] Balances view ("you owe / are owed")
@@ -47,6 +54,11 @@
       `GET /api/subscriptions/products`. Selection + checkout
       (`POST /api/subscriptions`) are not yet wired — the Continue
       button is disabled with a "Coming soon" hint.
+- [x] Subscription management UI (`/settings`) — view current plan,
+      toggle auto-renew, change plan at next billing cycle, cancel
+      subscription, view event history. User Settings API
+      (`/api/settings/me`) is wired but the frontend allow-list of
+      renderable keys is currently empty.
 - [ ] Replace local persistence with API
 - [ ] Real multi-user splits
 

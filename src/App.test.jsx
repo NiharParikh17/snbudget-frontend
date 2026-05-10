@@ -80,6 +80,20 @@ describe('App', () => {
     ).toBeInTheDocument()
   })
 
+  it('redirects /settings to /signin when anonymous', async () => {
+    renderAt('/settings')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^sign in$/i }),
+    ).toBeInTheDocument()
+  })
+
+  it('redirects /app/groups/:id to /signin when anonymous', async () => {
+    renderAt('/app/groups/11111111-1111-4111-a111-111111111111')
+    expect(
+      await screen.findByRole('heading', { level: 1, name: /^sign in$/i }),
+    ).toBeInTheDocument()
+  })
+
   it('redirects unknown routes to Home', () => {
     renderAt('/does-not-exist')
     expect(
